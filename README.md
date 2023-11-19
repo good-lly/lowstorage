@@ -45,24 +45,14 @@ npm install lowstorage
 
 ## API
 
-##### C
-
 -   insert(object {} or array [] of objects) - return array
-
-##### R
 
 -   find(query object eg. {\_id: id}) - return array of objects
 -   findOne - same as find, but return only array of one object
 
-##### U
-
 -   update
 -   updateOne
 
-##### D
-
 -   remove
-
-##### Utils
 
 -   count (not implemented)
