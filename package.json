@@ -1,0 +1,28 @@
+{
+    "name": "lowstorage",
+    "version": "0.0.1",
+    "description": "Zero-dependency, simple pseudo-database on Cloudflare R2, inspired by lowdb.",
+    "keywords": [
+        "storage",
+        "database",
+        "db",
+        "edge",
+        "r2",
+        "cloudflare",
+        "flat"
+    ],
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "esbuild --bundle --minify --platform=node --target=node16 --outfile=lib/index.js src/index.js",
+        "dev": "node src/index.js"
+    },
+    "license": "MIT",
+    "author": "Peter Jensen <peter@jensen.wtf>",
+    "type": "module",
+    "exports": {
+        ".": "./lib/index.js"
+    },
+    "engines": {
+        "node": ">=16"
+    }
+}

@@ -7,9 +7,20 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
+import lowstorage from '../../src/index.js';
 
 export default {
 	async fetch(request, env, ctx) {
+		const userCol = new lowstorage(env, 'MY_TESTING_BUCKET').collection('users');
+		const john = await userCol.insert({
+			name: 'Mark',
+			age: 128,
+		});
+		console.log('john', john);
+		const users = await userCol.find({ name: 'Mark' });
+		for (const user of users) {
+			console.log('user', user);
+		}
 		return new Response('Hello World!');
 	},
 };
