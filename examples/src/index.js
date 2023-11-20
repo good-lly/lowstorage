@@ -7,7 +7,7 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
-import lowstorage from '../../src/index.js';
+import lowstorage from '../../lowstorage';
 
 export default {
 	async fetch(request, env, ctx) {

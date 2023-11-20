@@ -1,7 +1,7 @@
 'use strict';
 
 const DELIMITER = '____';
-function checkArgs(...args) {
+function _checkArgs(...args) {
 	for (const arg of args) {
 		if (typeof arg !== 'object') {
 			throw new Error('lowstorage: missing args or args not an object');
@@ -14,12 +14,12 @@ function _matchesQuery(document, query) {
 	return Object.keys(query).every((key) => document[key] === query[key]);
 }
 
-function generateUUID() {
+function _generateUUID() {
 	// using the crypto implementation by Cloudflare -> https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
 	return crypto.randomUUID();
 }
 
-function getStore(env, storeName = null) {
+function _getStore(env, storeName = null) {
 	let store = null;
 	if (storeName) {
 		store = env[storeName];
@@ -38,24 +38,24 @@ function getStore(env, storeName = null) {
 
 class Collection {
 	constructor(colName, store) {
-		this.colName = colName;
-		this.__store = store;
+		this._colName = colName;
+		this._store = store;
 	}
 
 	// Insert a single document or an array of documents
 	async insert(doc) {
 		if (Array.isArray(doc)) {
 			const insertPromises = doc.map(async (item) => {
-				item._id = item._id || generateUUID();
-				const key = `${this.colName}/${this.colName}${DELIMITER}${item._id}`;
-				return this.__store.put(key, JSON.stringify(item));
+				item._id = item._id || _generateUUID();
+				const key = `${this.this._colName}/${this._colName}${DELIMITER}${item._id}`;
+				return this._store.put(key, JSON.stringify(item));
 			});
 			return Promise.all(insertPromises);
 		}
 		if (typeof doc === 'object' && doc !== null) {
-			doc._id = doc._id || generateUUID();
-			const key = `${this.colName}/${this.colName}${DELIMITER}${doc._id}`;
-			return this.__store.put(key, JSON.stringify(doc));
+			doc._id = doc._id || _generateUUID();
+			const key = `${this.this._colName}/${this.this._colName}${DELIMITER}${doc._id}`;
+			return this._store.put(key, JSON.stringify(doc));
 		}
 		throw new Error('Invalid input: input must be an object or an array of objects');
 	}
@@ -63,7 +63,7 @@ class Collection {
 	// Find documents based on a query
 	async find(query = {}) {
 		if (query._id) {
-			const doc = await this.__store.get(`${this.colName}/${this.colName}${DELIMITER}${query._id}`);
+			const doc = await this._store.get(`${this._colName}/${this._colName}${DELIMITER}${query._id}`);
 			if (doc) {
 				const parsedDoc = await doc.json();
 				return [parsedDoc];
@@ -71,15 +71,15 @@ class Collection {
 			return [];
 		}
 
-		const listed = await this.__store.list({
-			prefix: `${this.colName}/${this.colName}${DELIMITER}`,
+		const listed = await this._store.list({
+			prefix: `${this._colName}/${this._colName}${DELIMITER}`,
 		});
 		let truncated = listed.truncated;
 		let cursor = truncated ? listed.cursor : undefined;
 		// this is a workaround for the list method not returning all the keys (default limit is 1000)
 		while (truncated) {
-			const next = await this.__store.list({
-				prefix: `${this.colName}/${this.colName}${DELIMITER}`,
+			const next = await this._store.list({
+				prefix: `${this._colName}/${this._colName}${DELIMITER}`,
 				cursor: cursor,
 			});
 			listed.objects.push(...next.objects);
@@ -87,7 +87,7 @@ class Collection {
 			cursor = next.cursor;
 		}
 		const fetchPromises = listed.objects.map(async (file) => {
-			const doc = await this.__store.get(`${file.key}`);
+			const doc = await this._store.get(`${file.key}`);
 			return doc.json();
 		});
 		const fetchedDocs = await Promise.all(fetchPromises);
@@ -106,8 +106,8 @@ class Collection {
 		const docs = await this.find(query);
 		const updatePromises = docs.map(async (doc) => {
 			const updatedDoc = { ...doc, ...update };
-			const key = `${this.colName}/${this.colName}${DELIMITER}${doc._id}`;
-			return this.__store.put(key, JSON.stringify(updatedDoc));
+			const key = `${this._colName}/${this._colName}${DELIMITER}${doc._id}`;
+			return this._store.put(key, JSON.stringify(updatedDoc));
 		});
 		return Promise.all(updatePromises);
 	}
@@ -116,16 +116,16 @@ class Collection {
 	async updateOne(query = {}, update = {}) {
 		const doc = await this.findOne(query);
 		const updatedDoc = { ...doc, ...update };
-		const key = `${this.colName}/${this.colName}${DELIMITER}${doc._id}`;
-		return this.__store.put(key, JSON.stringify(updatedDoc));
+		const key = `${this._colName}/${this._colName}${DELIMITER}${doc._id}`;
+		return this._store.put(key, JSON.stringify(updatedDoc));
 	}
 
 	// Delete documents based on a query
 	async delete(query = {}) {
 		const docs = await this.find(query);
 		const deletePromises = docs.map(async (doc) => {
-			const key = `${this.colName}/${this.colName}${DELIMITER}${doc._id}`;
-			return this.__store.delete(key);
+			const key = `${this._colName}/${this._colName}${DELIMITER}${doc._id}`;
+			return this._store.delete(key);
 		});
 		return Promise.all(deletePromises);
 	}
@@ -133,11 +133,11 @@ class Collection {
 
 export default class lowstorage {
 	constructor(env, storeName) {
-		checkArgs(env);
-		this.__store = getStore(env, storeName);
+		_checkArgs(env);
+		this._store = _getStore(env, storeName);
 	}
 	collection(colName) {
-		return new Collection(colName, this.__store);
+		return new Collection(colName, this._store);
 	}
 }
 
