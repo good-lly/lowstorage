@@ -2,17 +2,19 @@
 
 > Zero-dependency, simple pseudo-database on Cloudflare R2, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).
 
-Example:
+Usage:
+_lowstorage is a pure ESM package. If you're having trouble using it in your project, please [read this](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)._
 
 ```js
+import lowstorage from 'lowstorage';
 // Initialize object and get users collection
 const usersCol = await lowStorage(env, 'MY_TESTING_BUCKET').collection('users');
 
 // Add new user
 const newUser = await usersCol.insert({
-    name: 'Kevin',
-    gender: 'whatever',
-    posts: [],
+	name: 'Kevin',
+	gender: 'whatever',
+	posts: [],
 });
 
 // Show all users
@@ -27,11 +29,11 @@ await newUser.posts.insert({ title: 'this is awesome' });
 
 ## Features
 
--   **Lightweight**
--   **Minimalist**
--   **Familiar API**
--   **plain JavaScript**
--   **Zero-dependency**
+- **Lightweight**
+- **Minimalist**
+- **Familiar API**
+- **plain JavaScript**
+- **Zero-dependency**
 
 ## Install
 
@@ -45,14 +47,14 @@ npm install lowstorage
 
 ## API
 
--   insert (object {} or array [] of objects) - return array
+- insert (object {} or array [] of objects) - return array
 
--   find(query object eg. {\_id: id}) - return array of objects
--   findOne - same as find, but return only array of one object
+- find(query object eg. {\_id: id}) - return array of objects
+- findOne - same as find, but return only array of one object
 
--   update
--   updateOne
+- update
+- updateOne
 
--   remove
+- remove
 
--   count (not implemented)
+- count (not implemented)
