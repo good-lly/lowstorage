@@ -11,6 +11,14 @@
         "cloudflare",
         "flat"
     ],
+    "homepage": "https://github.com/good-lly/lowstorage#README.md",
+    "bugs": {
+        "url": "https://github.com/good-lly/lowstorage/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/good-lly/lowstorage.git"
+    },
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "build": "esbuild --bundle --minify --platform=node --target=node16 --outfile=lib/index.js src/index.js",
@@ -24,5 +32,9 @@
     },
     "engines": {
         "node": ">=16"
+    },
+    "devDependencies": {
+        "esbuild": "^0.19.6",
+        "prettier": "^3.1.0"
     }
 }

@@ -6,7 +6,7 @@ Example:
 
 ```js
 // Initialize object and get users collection
-const usersCol = await LowStorage(env, 'MY_TESTING_BUCKET').collection('users');
+const usersCol = await lowStorage(env, 'MY_TESTING_BUCKET').collection('users');
 
 // Add new user
 const newUser = await usersCol.insert({
@@ -45,7 +45,7 @@ npm install lowstorage
 
 ## API
 
--   insert(object {} or array [] of objects) - return array
+-   insert (object {} or array [] of objects) - return array
 
 -   find(query object eg. {\_id: id}) - return array of objects
 -   findOne - same as find, but return only array of one object

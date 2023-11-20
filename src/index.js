@@ -1,4 +1,5 @@
 'use strict';
+
 const DELIMITER = '____';
 function checkArgs(...args) {
     for (const arg of args) {
@@ -70,15 +71,15 @@ class Collection {
                 return this.__store.put(key, JSON.stringify(item));
             });
             return Promise.all(insertPromises);
-        } else if (typeof doc === 'object' && doc !== null) {
+        }
+        if (typeof doc === 'object' && doc !== null) {
             doc._id = doc._id || generateUUID();
             const key = `${this.colName}/${this.colName}${DELIMITER}${doc._id}`;
             return this.__store.put(key, JSON.stringify(doc));
-        } else {
-            throw new Error(
-                'Invalid input: input must be an object or an array of objects',
-            );
         }
+        throw new Error(
+            'Invalid input: input must be an object or an array of objects',
+        );
     }
 
     // Find documents based on a query
