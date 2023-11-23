@@ -22,15 +22,11 @@
 	},
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"build": "esbuild --bundle --minify --platform=node --target=node16 --outfile=lib/lowstorage.js src/index.js",
-		"dev": "node src/index.js"
+		"build": "esbuild --bundle --minify --platform=node --target=node16 --outfile=lib/lowstorage.js src/lowstorage.js",
+		"dev": "node src/lowstorage.js"
 	},
 	"license": "MIT",
 	"author": "Peter Jensen <peter@jensen.wtf>",
-	"type": "module",
-	"exports": {
-		".": "./lib/lowstorage.js"
-	},
 	"engines": {
 		"node": ">=16"
 	},
