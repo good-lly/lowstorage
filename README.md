@@ -4,30 +4,20 @@
 </h1>
 
 > <strong>Zero-dependency, simple pseudo-database on Cloudflare R2, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).<strong>
-
-  <br>
-  <!-- Contributions -->
-  <a href="https://github.com/good-lly/lowstorage/issues/">
-    <img src="https://img.shields.io/badge/contributions-welcome-red.svg"
-      alt="Contributions welcome" />
-  </a>
-
- <!-- issues -->
+> <br>
 
 [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/)
-
- <!-- License -->
-
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE)
-
-![npm package minimized gzipped size (select exports)](https://img.shields.io/bundlejs/size/lowstorage)
+<a href="https://github.com/good-lly/lowstorage/issues/">
+<img src="https://img.shields.io/badge/contributions-welcome-red.svg"
+      alt="Contributions welcome" />
+</a>
 
 ## Sponsors
 
-<br> <br> <br>
-[Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
-
 ![GitHub Sponsors](https://img.shields.io/github/sponsors/good-lly)
+
+[Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
 
 ### Usage
 
@@ -122,7 +112,7 @@ Check out [dummy examples](https://github.com/good-lly/lowstorage/tree/master/ex
 
 Feel free to dive in! [Open an issue](https://github.com/good-lly/lowstorage/issues/new) or submit PRs.
 
-Standard Readme follows the [Contributor Covenant](http://contributor-covenant.org/version/1/3/0/) Code of Conduct.
+Standard Readme follows the [Contributor Covenant](http://contributor-covenant.org/version/1/3/0/) [Code of Conduct](https://github.com/good-lly/lowstorage/blob/master/CODE_OF_CONDUCT.md).
 
 ## License
 
