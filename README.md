@@ -1,6 +1,26 @@
-# lowstorage
+<h1>
+  lowstorage
+  <br>
+</h1>
 
-> Zero-dependency, simple pseudo-database on Cloudflare R2, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).
+> <strong>Zero-dependency, simple pseudo-database on Cloudflare R2, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).<strong>
+
+  <br>
+  <!-- Contributions -->
+  <a href="https://github.com/good-lly/lowstorage/issues/">
+    <img src="https://img.shields.io/badge/contributions-welcome-orange.svg"
+      alt="Contributions welcome" />
+  </a>
+
+ <!-- issues -->
+
+[![GitHub issues](https://img.shields.io/github/issues/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/issues/)
+
+ <!-- License -->
+
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE)
+
+</div>
 
 ## Sponsors
 
@@ -48,7 +68,22 @@ npm install lowstorage
 
 > Seamless migration, robust free tier, Nonee gress fees. Dive into the future of data storage with Cloudflare R2 https://developers.cloudflare.com/r2/
 
-But after all, it seems quite slow ...
+### Setup & binding R2 to your worker
+
+1. In the Cloudflare console, go to R2 (left navigation)
+2. Click Create Bucket
+3. Enter any bucket name you want (we use testing-lowstorage)
+4. Click Create Bucket (bottom)
+5. Go to 'Worker & Pages'
+6. Click on your worker (or create new one)
+7. Go to 'Settings' -> Variables
+8. In section 'R2 Bucket Bindings' click EDIT VARIABLES
+9. Hit '+ Add Binding' and pick variable name (we use 'MY_TESTING_BUCKET') and select your R2 bucket
+10. Click 'Save & Deploy'
+
+Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/blob/master/examples/wrangler.toml#L22)
+
+> Insctructions with pictures https://github.com/gfodor/p2pcf/blob/master/INSTALL.md#set-up-the-r2-bucket
 
 ## API
 
@@ -79,3 +114,13 @@ Check out [dummy examples](https://github.com/good-lly/lowstorage/tree/master/ex
 ```python
 	Error: Too many API requests by single worker invocation.
 ```
+
+## Contribution
+
+Feel free to dive in! [Open an issue](https://github.com/good-lly/lowstorage/issues/new) or submit PRs.
+
+Standard Readme follows the [Contributor Covenant](http://contributor-covenant.org/version/1/3/0/) Code of Conduct.
+
+## License
+
+[MIT](LICENSE)
