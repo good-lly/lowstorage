@@ -1,6 +1,6 @@
 {
 	"name": "lowstorage",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Zero-dependency, simple pseudo-database on Cloudflare R2, inspired by lowdb.",
 	"keywords": [
 		"storage",
