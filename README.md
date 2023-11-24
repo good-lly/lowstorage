@@ -8,22 +8,26 @@
   <br>
   <!-- Contributions -->
   <a href="https://github.com/good-lly/lowstorage/issues/">
-    <img src="https://img.shields.io/badge/contributions-welcome-orange.svg"
+    <img src="https://img.shields.io/badge/contributions-welcome-red.svg"
       alt="Contributions welcome" />
   </a>
 
  <!-- issues -->
 
-[![GitHub issues](https://img.shields.io/github/issues/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/issues/)
+[![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/)
 
  <!-- License -->
 
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE)
 
+![npm package minimized gzipped size (select exports)](https://img.shields.io/bundlejs/size/lowstorage)
+
 ## Sponsors
 
 <br> <br> <br>
 [Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
+
+![GitHub Sponsors](https://img.shields.io/github/sponsors/good-lly)
 
 ### Usage
 
