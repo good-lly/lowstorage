@@ -67,12 +67,13 @@ But after all, it seems quite slow ...
 
 ## Examples
 
-Check out 👉 [dummy examples](https://github.com/good-lly/lowstorage/examples)
+Check out [dummy examples](https://github.com/good-lly/lowstorage/tree/master/examples)
 
 ## Limitations
 
 - no test coverage, use carefully
-- inserting 1000+ entries results in hitting request limit:
+- response speed (no benchmarks so far)
+- inserting 1000+ entries results in hitting request limit
 
 ```python
 	Error: Too many API requests by single worker invocation.
