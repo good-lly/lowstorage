@@ -16,6 +16,7 @@ import lowstorage from 'lowstorage';
 const usersCol = await lowstorage(env, 'MY_TESTING_BUCKET').collection('users');
 
 // Add new user
+// you can provide _id or it will be generated as crypto.randomUUID();  -> https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
 const newUser = await usersCol.insert({
 	name: 'Kevin',
 	gender: 'whatever',
@@ -51,7 +52,7 @@ But after all, it seems quite slow ...
 
 ## API
 
-- insert (object {} or array [] of objects) - return array
+- insert (object {} or array [] of objects) - return array - check #Limitations
 
 - find(query object eg. {\_id: id}) - return array of objects
 - findOne - same as find, but return only array of one object, equivalent to the db.collection.find(query)
