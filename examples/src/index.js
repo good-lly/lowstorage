@@ -1,6 +1,6 @@
 'use strict';
 
-import lowstorage from '../../src/lowstorage.js';
+import lowstorage from 'lowstorage';
 import { Hono } from 'hono';
 const app = new Hono();
 
