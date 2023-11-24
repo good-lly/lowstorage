@@ -67,11 +67,13 @@ But after all, it seems quite slow ...
 
 ## Examples
 
+Check out 👉 [dummy examples](https://github.com/good-lly/lowstorage/examples)
+
 ## Limitations
 
 - no test coverage, use carefully
 - inserting 1000+ entries results in hitting request limit:
 
-```js
+```python
 	Error: Too many API requests by single worker invocation.
 ```
