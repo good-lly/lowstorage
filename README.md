@@ -1,17 +1,9 @@
 <h1>
-  lowstorage
+  lowstorage | for Workers using R2
   <br>
 </h1>
 
-> <strong>Zero-dependency, simple pseudo-database on Cloudflare R2, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).<strong>
-> <br>
-
-[![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/)
-[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE)
-<a href="https://github.com/good-lly/lowstorage/issues/">
-<img src="https://img.shields.io/badge/contributions-welcome-red.svg"
-      alt="Contributions welcome" />
-</a>
+> <strong>Simple, zero-dependency, object pseudo-database for Cloudflare Workers using R2 buckets, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).<strong> <br> ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white) [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE) <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-red.svg" alt="Contributions welcome" /></a>
 
 ## Sponsors
 
@@ -20,8 +12,6 @@
 [Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
 
 ### Usage
-
-_lowstorage is a pure ESM package. If you're having trouble using it in your project, please [read this](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)._
 
 ```js
 import lowstorage from 'lowstorage';
@@ -61,6 +51,13 @@ npm install lowstorage
 
 > Seamless migration, robust free tier, Nonee gress fees. Dive into the future of data storage with Cloudflare R2 https://developers.cloudflare.com/r2/
 
+#### Included features in Forever Free R2 tier
+
+> - Storage: 10 GB/month
+> - Class A operations (mutate state): 1,000,000 / month
+> - Class B operations (read state): 10,000,000 / month
+> - [more details on pricing R2](https://www.cloudflare.com/plans/developer-platform/#overview)
+
 ### Setup & binding R2 to your worker
 
 1. In the Cloudflare console, go to R2 (left navigation)
@@ -97,6 +94,13 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
 ## Examples
 
 Check out [dummy examples](https://github.com/good-lly/lowstorage/tree/master/examples)
+Run:
+
+```javascript
+cd examples
+npm install
+npm run dev
+```
 
 ## Limitations
 
