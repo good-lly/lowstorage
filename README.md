@@ -140,11 +140,6 @@ npm run dev
 
 - no test coverage, use carefully
 - response speed (no benchmarks so far)
-- inserting 1000+ entries results in hitting request limit
-
-```python
-	Error: Too many API requests by single worker invocation.
-```
 
 ## Contribution
 
