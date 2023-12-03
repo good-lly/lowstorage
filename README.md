@@ -77,19 +77,51 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
 
 ## API
 
-- insert (object {} or array [] of objects) - return array - check #Limitations
+- **insert(doc)**
 
-- find(query object eg. {\_id: id}) - return array of objects
-- findOne - same as find, but return only array of one object, equivalent to the db.collection.find(query)
+  - **Input**: A single object or an array of objects.
+  - **Behavior**: Inserts the given document(s) into the collection. Each document is assigned a unique identifier if it doesn't already have one.
+  - **Returns**: A promise that resolves when the insert operation is complete.
 
-- update - (query{} , update {}) - return promise of updated objects
-- updateOne - same as update, but very limited
+- **find(query)**
 
-- delete (query {}) delete specific file or all inside collection
+  - **Input**: A query object (e.g., `{_id: id}`).
+  - **Behavior**: Searches for documents that match the query.
+  - **Returns**: A promise that resolves to an array of matching documents.
 
-- remove () - removing all files inside collection
+- **findOne(query)**
 
-- count () - is equivalent to the db.collection.find(query).count() construct
+  - **Input**: A query object.
+  - **Behavior**: Similar to `find`, but it returns only the first matching document.
+  - **Returns**: A promise that resolves to a single document or `null` if no match is found.
+
+- **update(query, update)**
+
+  - **Input**: A query object and an update object.
+  - **Behavior**: Updates all documents that match the query with the provided update data.
+  - **Returns**: A promise that resolves to the number of documents updated.
+
+- **updateOne(query, update)**
+
+  - **Input**: A query object and an update object.
+  - **Behavior**: Updates the first document that matches the query with the provided update data.
+  - **Returns**: A promise that resolves to `1` if a document is updated, otherwise `0`.
+
+- **delete(query)**
+
+  - **Input**: A query object.
+  - **Behavior**: Deletes documents that match the query.
+  - **Returns**: A promise that resolves to the number of documents deleted.
+
+- **remove()**
+
+  - **Behavior**: Removes all documents from the collection.
+  - **Returns**: A promise that resolves to the number of documents removed.
+
+- **count(query)**
+  - **Input**: A query object (optional).
+  - **Behavior**: Counts the number of documents that match the query. If no query is provided, it counts all documents in the collection.
+  - **Returns**: A promise that resolves to the count of matching documents.
 
 ## Examples
 
