@@ -12,6 +12,7 @@
 		"flat"
 	],
 	"main": "lib/lowstorage.js",
+	"type": "module",
 	"homepage": "https://github.com/good-lly/lowstorage#README.md",
 	"bugs": {
 		"url": "https://github.com/good-lly/lowstorage/issues"
@@ -22,7 +23,7 @@
 	},
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"build": "esbuild --bundle --minify --platform=node --target=node16 --outfile=lib/lowstorage.js src/lowstorage.js",
+		"build": "esbuild --bundle --minify --platform=node --target=node16  --format=esm  --outfile=lib/lowstorage.js src/lowstorage.js",
 		"dev": "node src/lowstorage.js"
 	},
 	"license": "MIT",
