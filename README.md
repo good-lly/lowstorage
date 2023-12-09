@@ -83,6 +83,12 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
 
 ## API
 
+**collection(colName)**
+
+- **Input**: A string representing the name of the collection.
+- **Behavior**: Creates or accesses a collection with the given name.
+- **Returns**: An instance of the Collection class corresponding to the specified collection name.
+
 - **insert(doc)**
 
   - **Input**: A single object or an array of objects.
@@ -128,6 +134,11 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
   - **Input**: A query object (optional).
   - **Behavior**: Counts the number of documents that match the query. If no query is provided, it counts all documents in the collection.
   - **Returns**: A promise that resolves to the count of matching documents.
+
+**listCollections()**
+
+- **Behavior**: Lists all collections stored in the Cloudflare R2 bucket associated with the lowstorage instance. (All files ending with .json)
+- **Returns**: A promise that resolves to an array of collection names.
 
 ## Examples
 
