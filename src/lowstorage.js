@@ -1,4 +1,3 @@
-const DELIMITER = '____';
 const _checkArgs = (...args) => {
 	for (const arg of args) {
 		if (typeof arg !== 'object' || arg === null) {
@@ -37,9 +36,6 @@ class Collection {
 	constructor(colName, store) {
 		this._colName = colName;
 		this._store = store;
-		this._data = this._loadData().then((data) => {
-			this._data = data;
-		});
 	}
 
 	async _loadData() {
@@ -59,9 +55,9 @@ class Collection {
 		}
 	}
 
-	async _saveData() {
+	async _saveData(data) {
 		const key = `${this._colName}/${this._colName}.json`;
-		return this._store.put(key, JSON.stringify(this._data));
+		return this._store.put(key, JSON.stringify(data));
 	}
 
 	// Insert a single document or an array of documents
@@ -69,21 +65,21 @@ class Collection {
 		if (!Array.isArray(doc)) {
 			doc = [doc];
 		}
-		await this._data;
+		const data = await this._loadData();
 		for (let item of doc) {
 			if (typeof item !== 'object' || item === null) {
 				throw new Error('Invalid input: input must be an object or an array of objects');
 			}
 			item._id = item._id || _generateUUID();
-			this._data.push(item);
+			data.push(item);
 		}
-		await this._saveData();
+		await this._saveData(data);
 	}
 
 	// Find documents based on a query
 	async find(query = {}) {
-		await this._data;
-		return this._data.filter((doc) => _matchesQuery(doc, query));
+		const data = await this._loadData();
+		return data.filter((doc) => _matchesQuery(doc, query));
 	}
 
 	// Find documents based on a query
@@ -93,20 +89,31 @@ class Collection {
 
 	// Update documents based on a query
 	async update(query = {}, update = {}) {
-		const docsToUpdate = await this.find(query);
-		docsToUpdate.forEach((doc) => {
-			Object.assign(doc, update);
+		const data = await this._loadData();
+		let updatedCount = 0;
+
+		data.forEach((doc) => {
+			if (_matchesQuery(doc, query)) {
+				Object.assign(doc, update);
+				updatedCount++;
+			}
 		});
-		await this._saveData();
-		return docsToUpdate.length;
+
+		if (updatedCount > 0) {
+			await this._saveData(data);
+		}
+
+		return updatedCount;
 	}
 
 	// Update a single document based on a query
 	async updateOne(query = {}, update = {}) {
-		const doc = await this.findOne(query);
-		if (doc) {
-			Object.assign(doc, update);
-			await this._saveData();
+		const data = await this._loadData();
+		const docIndex = data.findIndex((doc) => _matchesQuery(doc, query));
+
+		if (docIndex !== -1) {
+			Object.assign(data[docIndex], update);
+			await this._saveData(data);
 			return 1;
 		}
 		return 0;
@@ -114,11 +121,11 @@ class Collection {
 
 	// Delete documents based on a query
 	async delete(query = {}) {
-		await this._data;
-		const initialLength = this._data.length;
-		this._data = this._data.filter((doc) => !_matchesQuery(doc, query));
-		await this._saveData();
-		return initialLength - this._data.length;
+		const data = await this._loadData();
+		const initialLength = data.length;
+		const newData = data.filter((doc) => !_matchesQuery(doc, query));
+		await this._saveData(newData);
+		return initialLength - newData.length;
 	}
 
 	async count(query = {}) {
@@ -126,10 +133,9 @@ class Collection {
 	}
 
 	async remove() {
-		await this._data;
-		const deletedCount = this._data.length;
-		this._data = [];
-		await this._saveData();
+		const data = await this._loadData();
+		const deletedCount = data.length;
+		await this._saveData([]);
 		return deletedCount;
 	}
 }
@@ -141,6 +147,26 @@ class lowstorage {
 	}
 	collection(colName) {
 		return new Collection(colName, this._store);
+	}
+
+	// this is similar to list all files unfortunatelly -
+	// it returns a list of "collections" but expect to have a .json file for each collection
+	// this is a workaround for the list method not returning all the keys (default limit is 1000)
+	// return names of collections
+	async listCollections() {
+		const listed = await this._store.list();
+		let truncated = listed.truncated;
+		let cursor = truncated ? listed.cursor : undefined;
+		// this is a workaround for the list method not returning all the keys (default limit is 1000)
+		while (truncated) {
+			const next = await this._store.list({
+				cursor: cursor,
+			});
+			listed.objects.push(...next.objects);
+			truncated = next.truncated;
+			cursor = next.cursor;
+		}
+		return listed.objects.filter((key) => key.endsWith('.json')).map((key) => key.split('/')[0]);
 	}
 }
 
