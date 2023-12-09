@@ -18,6 +18,21 @@ app.post('/inserdata', async (c) => {
 	return c.json(insertedData);
 });
 
+app.post('/update/:id', async (c) => {
+	const id = c.req.param('id');
+	const jsonGeneratedData = await c.req.json();
+	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
+	const updatedDataRespo = await userCol.update({ _id: id }, jsonGeneratedData);
+	return c.json(updatedDataRespo);
+});
+
+// list all "collections"
+app.get('/list-collections', async (c) => {
+	const ls = new lowstorage(c.env, BUCKET_NAME);
+	const allCols = await ls.listCollections();
+	return c.json({ allCols });
+});
+
 // list all users
 app.get('/users', async (c) => {
 	const requestStartTime = Date.now();

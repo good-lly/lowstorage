@@ -151,7 +151,6 @@ class lowstorage {
 
 	// this is similar to list all files unfortunatelly -
 	// it returns a list of "collections" but expect to have a .json file for each collection
-	// this is a workaround for the list method not returning all the keys (default limit is 1000)
 	// return names of collections
 	async listCollections() {
 		const listed = await this._store.list();
@@ -166,7 +165,9 @@ class lowstorage {
 			truncated = next.truncated;
 			cursor = next.cursor;
 		}
-		return listed.objects.filter((key) => key.endsWith('.json')).map((key) => key.split('/')[0]);
+		const collections = listed.objects.filter((entry) => entry.key.endsWith('.json'));
+		// return only the collection name
+		return collections.map((entry) => entry.key.split('/')[0]);
 	}
 }
 
