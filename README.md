@@ -13,6 +13,10 @@
 
 [Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
 
+### Important Notice
+
+While Cloudflare R2 operates on a strongly consistent model ([reference](https://developers.cloudflare.com/r2/reference/consistency/)), it's important to note that `lowstorage` is primarily designed for small, hobby, or personal projects. We advise extreme caution when using `lowstorage` for critical applications or production environments, as it may not offer the robustness or features required for such use cases.
+
 ### Usage
 
 ```js
