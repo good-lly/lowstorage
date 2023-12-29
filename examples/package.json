@@ -8,7 +8,7 @@
 		"start": "wrangler dev --remote"
 	},
 	"devDependencies": {
-		"wrangler": "^3.0.0"
+		"wrangler": "^3.22.1"
 	},
 	"dependencies": {
 		"hono": "^3.11.7",
