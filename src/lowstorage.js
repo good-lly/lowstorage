@@ -15,18 +15,33 @@ const _generateUUID = () => {
 	return crypto.randomUUID();
 };
 
-const _getStore = (env, storeName = null) => {
-	let store = null;
-	if (storeName) {
-		store = env[storeName];
+const _isR2Store = (obj) => {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'get' in obj &&
+		typeof obj.get === 'function' &&
+		'put' in obj &&
+		typeof obj.put === 'function' &&
+		'delete' in obj &&
+		typeof obj.delete === 'function' &&
+		'list' in obj &&
+		typeof obj.list === 'function'
+	);
+};
+
+const _getStore = (env, storeName) => {
+	let store = storeName ? env[storeName] ?? null : null;
+	if (!store) {
+		// Check for null directly
+		for (const obj of Object.values(env)) {
+			if (_isR2Store(obj)) {
+				return obj;
+			}
+		}
+	} else {
 		if (store.get && store.put && store.delete && store.list) {
 			return store;
-		}
-		throw new Error(`lowstorage: store ${storeName} not found`);
-	}
-	for (const obj of Object.values(env)) {
-		if (obj.get && obj.put && obj.delete && obj.list) {
-			return obj;
 		}
 	}
 	throw new Error('lowstorage: no valid store found');
@@ -36,6 +51,18 @@ class Collection {
 	constructor(colName, store) {
 		this._colName = colName;
 		this._store = store;
+	}
+
+	// Adds a skip function
+	skip(numToSkip) {
+		this._skip = numToSkip;
+		return this;
+	}
+
+	// Adds a limit function
+	limit(numToLimit) {
+		this._limit = numToLimit;
+		return this;
 	}
 
 	async _loadData() {
@@ -79,7 +106,22 @@ class Collection {
 	// Find documents based on a query
 	async find(query = {}) {
 		const data = await this._loadData();
-		return data.filter((doc) => _matchesQuery(doc, query));
+		const filteredData = data.filter((doc) => _matchesQuery(doc, query));
+
+		// Apply skip and limit if they have been set
+		let resultData = filteredData;
+		if (this._skip) {
+			resultData = resultData.slice(this._skip);
+		}
+		if (this._limit) {
+			resultData = resultData.slice(0, this._limit);
+		}
+
+		// Reset skip and limit
+		this._skip = undefined;
+		this._limit = undefined;
+
+		return resultData;
 	}
 
 	// Find documents based on a query
