@@ -22,7 +22,7 @@
 		"url": "git+https://github.com/good-lly/lowstorage.git"
 	},
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
+		"test": "npm run build && jest --config=jest.config.json",
 		"build": "esbuild --bundle --minify --platform=node --target=node16  --format=esm  --outfile=lib/lowstorage.js src/lowstorage.js",
 		"dev": "node src/lowstorage.js"
 	},
@@ -31,9 +31,17 @@
 	"engines": {
 		"node": ">=16"
 	},
+	"jest": {
+		"collectCoverageFrom": [
+			"src/lowstorage.js"
+		]
+	},
 	"devDependencies": {
 		"esbuild": "^0.19.6",
+		"jest": "^29.7.0",
 		"prettier": "^3.1.0",
-		"typescript": "^5.3.3"
+		"supertest": "^6.3.4",
+		"typescript": "^5.3.3",
+		"wrangler": "^3.31.0"
 	}
 }

@@ -15,34 +15,24 @@ const _generateUUID = () => {
 	return crypto.randomUUID();
 };
 
-const _isR2Store = (obj) => {
-	let hasMethod = (obj, name) => {
-		return typeof obj !== 'undefined' && obj !== null && typeof obj[name] === 'function';
-	};
+const _hasMethod = (obj, name) => {
+	return typeof obj !== 'undefined' && obj !== null && typeof obj[name] === 'function';
+};
 
+const _isR2Store = (obj) => {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		hasMethod(obj, 'get') &&
-		hasMethod(obj, 'put') &&
-		hasMethod(obj, 'delete') &&
-		hasMethod(obj, 'list')
+		_hasMethod(obj, 'get') &&
+		_hasMethod(obj, 'put') &&
+		_hasMethod(obj, 'delete') &&
+		_hasMethod(obj, 'list')
 	);
 };
 
 const _getStore = (env, storeName) => {
-	let store = storeName ? env[storeName] : null;
-	if (!store) {
-		// Check for null directly
-		for (const obj of Object.values(env)) {
-			if (_isR2Store(obj)) {
-				return obj;
-			}
-		}
-	} else {
-		if (store.get && store.put && store.delete && store.list) {
-			return store;
-		}
+	if (storeName && _isR2Store(env[storeName])) {
+		return env[storeName];
 	}
 	throw new Error('lowstorage: no valid store found');
 };
@@ -101,6 +91,7 @@ class Collection {
 			data.push(item);
 		}
 		await this._saveData(data);
+		return doc.length === 1 ? doc[0] : doc;
 	}
 
 	// Find documents based on a query

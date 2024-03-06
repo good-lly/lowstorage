@@ -7,7 +7,7 @@ const app = new Hono();
 const BUCKET_NAME = 'MY_TESTING_BUCKET';
 const USER_COL = 'users';
 
-app.post('/inserdata', async (c) => {
+app.post('/insertdata', async (c) => {
 	// poor's man benchmark
 	const requestStartTime = Date.now();
 	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
@@ -22,8 +22,8 @@ app.post('/update/:id', async (c) => {
 	const id = c.req.param('id');
 	const jsonGeneratedData = await c.req.json();
 	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
-	const updatedDataRespo = await userCol.update({ _id: id }, jsonGeneratedData);
-	return c.json(updatedDataRespo);
+	const updatedDataResp = await userCol.update({ _id: id }, jsonGeneratedData);
+	return c.json(updatedDataResp);
 });
 
 // list all "collections"
