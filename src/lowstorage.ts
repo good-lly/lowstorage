@@ -59,17 +59,17 @@ const _generateUUID = (): string => {
 };
 
 const _isR2Store = (obj: unknown): obj is R2Store => {
+	let hasMethod = (obj: unknown, name: any) => {
+		return typeof obj !== 'undefined' && obj !== null && typeof obj[name] === 'function';
+	};
+
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		'get' in obj &&
-		typeof obj.get === 'function' &&
-		'put' in obj &&
-		typeof obj.put === 'function' &&
-		'delete' in obj &&
-		typeof obj.delete === 'function' &&
-		'list' in obj &&
-		typeof obj.list === 'function'
+		hasMethod(obj, 'get') &&
+		hasMethod(obj, 'put') &&
+		hasMethod(obj, 'delete') &&
+		hasMethod(obj, 'list')
 	);
 };
 
