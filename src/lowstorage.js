@@ -16,22 +16,22 @@ const _generateUUID = () => {
 };
 
 const _isR2Store = (obj) => {
+	let hasMethod = (obj, name) => {
+		return typeof obj !== 'undefined' && obj !== null && typeof obj[name] === 'function';
+	};
+
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		'get' in obj &&
-		typeof obj.get === 'function' &&
-		'put' in obj &&
-		typeof obj.put === 'function' &&
-		'delete' in obj &&
-		typeof obj.delete === 'function' &&
-		'list' in obj &&
-		typeof obj.list === 'function'
+		hasMethod(obj, 'get') &&
+		hasMethod(obj, 'put') &&
+		hasMethod(obj, 'delete') &&
+		hasMethod(obj, 'list')
 	);
 };
 
 const _getStore = (env, storeName) => {
-	let store = storeName ? env[storeName] ?? null : null;
+	let store = storeName ? env[storeName] : null;
 	if (!store) {
 		// Check for null directly
 		for (const obj of Object.values(env)) {
@@ -134,12 +134,12 @@ class Collection {
 		const data = await this._loadData();
 		let updatedCount = 0;
 
-		data.forEach((doc) => {
-			if (_matchesQuery(doc, query)) {
-				Object.assign(doc, update);
+		for (let i = 0; i < data.length; i++) {
+			if (_matchesQuery(data[i], query)) {
+				Object.assign(data[i], update);
 				updatedCount++;
 			}
-		});
+		}
 
 		if (updatedCount > 0) {
 			await this._saveData(data);

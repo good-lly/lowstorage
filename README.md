@@ -32,6 +32,9 @@ const newUser = await usersCol.insert({
 	posts: [],
 });
 
+// Find users with pagination (e.g., page 2, 10 users per page)
+const secondPageUsers = await usersCol.find().skip(10).limit(10);
+
 // Show all users
 const allUsers = usersCol.find({});
 
@@ -100,6 +103,10 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
   - **Input**: A query object (e.g., `{_id: id}`).
   - **Behavior**: Searches for documents that match the query.
   - **Returns**: A promise that resolves to an array of matching documents.
+
+- **_skip(numToSkip)_** Skips the specified number of documents in query results. Use this for pagination (e.g., skipping the first page of results). Returns the updated collection instance to allow chaining.
+
+- **_limit(numToLimit)_** Limits the number of documents returned by query results. Use this for pagination (e.g., limiting to 10 results per page). Returns the updated collection instance to allow chaining.
 
 - **findOne(query)**
 
