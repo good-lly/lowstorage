@@ -22,8 +22,8 @@ app.post('/update/:id', async (c) => {
 	const id = c.req.param('id');
 	const jsonGeneratedData = await c.req.json();
 	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
-	const updatedDataResp = await userCol.update({ _id: id }, jsonGeneratedData);
-	return c.json(updatedDataResp);
+	const user = await userCol.update({ _id: id }, jsonGeneratedData);
+	return c.json({ user });
 });
 
 // list all "collections"
@@ -33,13 +33,11 @@ app.get('/list-collections', async (c) => {
 	return c.json({ allCols });
 });
 
-// list all users
 app.get('/users', async (c) => {
-	const requestStartTime = Date.now();
 	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
-	const users = await userCol.find({});
-	const executionTime = Date.now() - requestStartTime;
-	console.log(`Request took ${executionTime}ms`);
+	const limit = parseInt(c.req.query('limit'), 10) || undefined; // Get limit, with default
+	const skip = parseInt(c.req.query('skip'), 10) || undefined; // Get skip, with default
+	const users = await userCol.find({}, { limit: limit, skip: skip });
 	return c.json({ users });
 });
 
@@ -53,7 +51,7 @@ app.get('/users-count', async (c) => {
 app.get('/user/:id', async (c) => {
 	const id = c.req.param('id');
 	const userCol = new lowstorage(c.env, BUCKET_NAME).collection(USER_COL);
-	const user = await userCol.find({ _id: id });
+	const user = await userCol.findOne({ _id: id });
 	return c.json({ user });
 });
 

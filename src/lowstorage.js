@@ -43,18 +43,6 @@ class Collection {
 		this._store = store;
 	}
 
-	// Adds a skip function
-	skip(numToSkip) {
-		this._skip = numToSkip;
-		return this;
-	}
-
-	// Adds a limit function
-	limit(numToLimit) {
-		this._limit = numToLimit;
-		return this;
-	}
-
 	async _loadData() {
 		try {
 			const doc = await this._store.get(`${this._colName}/${this._colName}.json`);
@@ -95,24 +83,12 @@ class Collection {
 	}
 
 	// Find documents based on a query
-	async find(query = {}) {
+	async find(query = {}, options = {}) {
 		const data = await this._loadData();
-		const filteredData = data.filter((doc) => _matchesQuery(doc, query));
-
-		// Apply skip and limit if they have been set
-		let resultData = filteredData;
-		if (this._skip) {
-			resultData = resultData.slice(this._skip);
-		}
-		if (this._limit) {
-			resultData = resultData.slice(0, this._limit);
-		}
-
-		// Reset skip and limit
-		this._skip = undefined;
-		this._limit = undefined;
-
-		return resultData;
+		const start = parseInt(options.skip, 10) || 0;
+		const end = parseInt(options.limit, 10) ? start + parseInt(options.limit, 10) : undefined; // If no limit is defined, slice to the end
+		const filteredData = data.filter((doc) => _matchesQuery(doc, query)).slice(start, end);
+		return filteredData;
 	}
 
 	// Find documents based on a query
