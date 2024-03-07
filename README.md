@@ -9,7 +9,7 @@
 
 ## Sponsors
 
-![GitHub Sponsors](https://img.shields.io/github/sponsors/good-lly)
+<!-- ![GitHub Sponsors](https://img.shields.io/github/sponsors/good-lly) -->
 
 [Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
 
@@ -32,11 +32,11 @@ const newUser = await usersCol.insert({
 	posts: [],
 });
 
-// Find users with pagination (e.g., page 2, 10 users per page)
-const secondPageUsers = await usersCol.find().skip(10).limit(10);
-
 // Show all users
 const allUsers = usersCol.find({});
+
+// Find users with pagination (e.g., page 2, 10 users per page)
+const secondPageUsers = await usersCol.find({}, { skip: 10, limit: 10 });
 
 // Find user by ID and update name
 await usersCol.update({ _id: id }, { name: 'Carlos' });
@@ -47,7 +47,7 @@ await usersCol.update({ _id: id }, { name: 'Carlos' });
 - **Lightweight**
 - **Minimalist**
 - **Familiar API**
-- **plain JavaScript**
+- **Plain JavaScript**
 - **Zero-dependency**
 
 ## Install
@@ -94,19 +94,19 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
 
 - **insert(doc)**
 
-  - **Input**: A single object or an array of objects.
-  - **Behavior**: Inserts the given document(s) into the collection. Each document is assigned a unique identifier if it doesn't already have one.
-  - **Returns**: A promise that resolves when the insert operation is complete.
+- **insert(doc)**
 
-- **find(query)**
+  - **Input**: A single object or an array of objects to insert into the collection.
+  - **Behavior**: Inserts the given document(s) into the collection. If an `_id` is not provided, a unique identifier is automatically generated using `crypto.randomUUID()`.
+  - **Returns**: The inserted document(s), with an `_id` property assigned to each if not already present.
 
-  - **Input**: A query object (e.g., `{_id: id}`).
-  - **Behavior**: Searches for documents that match the query.
-  - **Returns**: A promise that resolves to an array of matching documents.
+- **find(query, options)**
 
-- **_skip(numToSkip)_** Skips the specified number of documents in query results. Use this for pagination (e.g., skipping the first page of results). Returns the updated collection instance to allow chaining.
-
-- **_limit(numToLimit)_** Limits the number of documents returned by query results. Use this for pagination (e.g., limiting to 10 results per page). Returns the updated collection instance to allow chaining.
+  - **Input**:
+    - `query`: A query object to match documents.
+    - `options`: An optional object for pagination, containing `skip` and `limit` properties.
+  - **Behavior**: Searches for documents matching the query. Supports pagination through `options`.
+  - **Returns**: A promise that resolves to an array of matching documents, considering any pagination specified.
 
 - **findOne(query)**
 
@@ -128,8 +128,8 @@ Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/b
 
 - **delete(query)**
 
-  - **Input**: A query object.
-  - **Behavior**: Deletes documents that match the query.
+  - **Input**: A query object to match documents for deletion.
+  - **Behavior**: Deletes documents matching the query.
   - **Returns**: A promise that resolves to the number of documents deleted.
 
 - **remove()**
@@ -158,10 +158,19 @@ npm install
 npm run dev
 ```
 
+for testing:
+
+```javascript
+npm run test
+```
+
+It starts local wrangler with ENV and toml config from your /examples folder to run tests.
+
 ## Limitations
 
-- no test coverage, use carefully
+- <s>no test coverage</s> (wip) lowstorage is using end to end tests via its examples
 - response speed (no benchmarks so far)
+- use carefully!
 
 ## Contribution
 
