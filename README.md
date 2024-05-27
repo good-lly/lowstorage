@@ -22,7 +22,10 @@ While Cloudflare R2 operates on a strongly consistent model ([reference](https:/
 ```js
 import lowstorage from 'lowstorage';
 // Initialize object and get users collection
-const usersCol = await lowstorage(env, 'MY_TESTING_BUCKET').collection('users');
+const storage = new lowstorage(env, 'MY_TESTING_BUCKET');
+const userCol = storage.collection('users');
+
+// or just const userCol = new lowstorage(env, 'MY_TESTING_BUCKET').collection('users')
 
 // Add new user
 // you can provide _id or it will be generated as crypto.randomUUID();  -> https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
