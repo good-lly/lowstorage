@@ -1,48 +1,70 @@
 <h1>
-  lowstorage | for Workers using R2
+  lowstorage | for edges & S3-compatible storages
   <br>
 </h1>
 
-> <strong>Simple, zero-dependency, object pseudo-database for Cloudflare Workers using R2 buckets, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).</strong> <br> ![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white) [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE) <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-red.svg" alt="Contributions welcome" /></a>
+> <strong>Simple, single-dependency (@aws-sdk based), object pseudo-database for S3-compatible storages, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).</strong> <br> ![AWS S3](https://img.shields.io/badge/AWS%20S3-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white) [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE) <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-red.svg" alt="Contributions welcome" /></a>
 
 [[github](https://github.com/good-lly/lowstorage)] [[npm](https://www.npmjs.com/package/lowstorage)]
 
 ## Sponsors
 
-<!-- ![GitHub Sponsors](https://img.shields.io/github/sponsors/good-lly) -->
-
 [Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
 
 ### Important Notice
 
-While Cloudflare R2 operates on a strongly consistent model ([reference](https://developers.cloudflare.com/r2/reference/consistency/)), it's important to note that `lowstorage` is primarily designed for small, hobby, or personal projects. We advise extreme caution when using `lowstorage` for critical applications or production environments, as it may not offer the robustness or features required for such use cases.
+`lowstorage` is primarily designed for small, hobby, or personal projects. We advise extreme caution when using `lowstorage` for critical applications or production environments, as it may not offer the robustness or features required for such use cases.
 
-### Usage
+### Breaking Changes
+
+#### Version 2
+
+Since version 2.0.0, `lowstorage` has undergone significant changes:
+
+- **Constructor Changes**: The constructor now accepts S3-compatible configuration instead of being tied to Cloudflare R2.
+- **Support for Multiple Storages**: Now supports any S3-compatible storage like AWS S3, Cloudflare R2, Minio, Ceph, etc.
+
+If you are migrating from version 1.x.x, please review the new constructor parameters and usage examples below.
+
+### Cloudflare R2 - S3 API Compatibility
+
+R2 implements the S3 API to allow users and their applications to migrate with ease. When comparing to AWS S3, Cloudflare has removed some API operations’ features and added others. The S3 API operations are listed below with their current implementation status. Feature implementation is currently in progress. Refer back to this page for updates. The API is available via the `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint. Find your account ID in the Cloudflare dashboard.
+
+#### Bucket region
+
+When using the S3 API, the region for an R2 bucket is `auto`. For compatibility with tools that do not allow you to specify a region, an empty value and `us-east-1` will alias to the `auto` region.
+
+### lowstorage Usage
 
 ```js
 import lowstorage from 'lowstorage';
 // Initialize object and get users collection
-const storage = new lowstorage(env, 'MY_TESTING_BUCKET');
+const storage = new lowstorage({
+	endPoint: 'play.min.io',
+	port: 80,
+	region: 'auto',
+	useSSL: true,
+	accessKey: 'Q3AM3UQ867SPQQA43P2F',
+	secretKey: 'zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG',
+	bucketName: 'mybucket',
+});
 const userCol = storage.collection('users');
 
-// or just const userCol = new lowstorage(env, 'MY_TESTING_BUCKET').collection('users')
-
 // Add new user
-// you can provide _id or it will be generated as crypto.randomUUID();  -> https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
-const newUser = await usersCol.insert({
+const newUser = await userCol.insert({
 	name: 'Kevin',
 	gender: 'whatever',
 	posts: [],
 });
 
 // Show all users
-const allUsers = usersCol.find({});
+const allUsers = await userCol.find({});
 
 // Find users with pagination (e.g., page 2, 10 users per page)
-const secondPageUsers = await usersCol.find({}, { skip: 10, limit: 10 });
+const secondPageUsers = await userCol.find({}, { skip: 10, limit: 10 });
 
 // Find user by ID and update name
-await usersCol.update({ _id: id }, { name: 'Carlos' });
+await userCol.update({ _id: id }, { name: 'Carlos' });
 ```
 
 ## Features
@@ -50,8 +72,9 @@ await usersCol.update({ _id: id }, { name: 'Carlos' });
 - **Lightweight**
 - **Minimalist**
 - **Familiar API**
+- **S3-compatibility**
 - **Plain JavaScript**
-- **Zero-dependency**
+- **Signle-dependency ([@aws-sdk/client-s3](https://www.npmjs.com/package/@aws-sdk/client-s3))**
 
 ## Install
 
@@ -59,33 +82,26 @@ await usersCol.update({ _id: id }, { name: 'Carlos' });
 npm install lowstorage
 ```
 
-#### Why Cloudflare R2?
+#### Why S3-Compatible Storage?
 
-> Seamless migration, robust free tier, Nonee gress fees. Dive into the future of data storage with Cloudflare R2 https://developers.cloudflare.com/r2/
+> S3-compatible storages provide a reliable, scalable, and widely supported option for object storage. Platforms like AWS S3, Cloudflare R2, Minio and Ceph offer robust infrastructure with various features and pricing models to suit different needs.
 
-#### Included features in Forever Free R2 tier
+### Setup & config
 
-> - Storage: 10 GB/month
-> - Class A operations (mutate state): 1,000,000 / month
-> - Class B operations (read state): 10,000,000 / month
-> - [more details on pricing R2](https://www.cloudflare.com/plans/developer-platform/#overview)
+To set up and bind your storage, configure your storage client with the appropriate credentials and bucket information. Here is an example setup for AWS S3:
 
-### Setup & binding R2 to your worker
+```js
+const storage = new lowstorage({
+	endPoint: 's3.amazonaws.com',
+	useSSL: true,
+	region: 'YOUR-REGION',
+	accessKey: 'YOUR-ACCESSKEYID',
+	secretKey: 'YOUR-SECRETACCESSKEY',
+	bucketName: 'your-bucket-name',
+});
+```
 
-1. In the Cloudflare console, go to R2 (left navigation)
-2. Click Create Bucket
-3. Enter any bucket name you want (we use testing-lowstorage)
-4. Click Create Bucket (bottom)
-5. Go to 'Worker & Pages'
-6. Click on your worker (or create new one)
-7. Go to 'Settings' -> Variables
-8. In section 'R2 Bucket Bindings' click EDIT VARIABLES
-9. Hit '+ Add Binding' and pick variable name (we use 'MY_TESTING_BUCKET') and select your R2 bucket
-10. Click 'Save & Deploy'
-
-Check out [wrangler.toml from examples](https://github.com/good-lly/lowstorage/blob/master/examples/wrangler.toml#L22)
-
-> Insctructions with pictures https://github.com/gfodor/p2pcf/blob/master/INSTALL.md#set-up-the-r2-bucket
+For Cloudflare R2, follow similar steps with your R2-specific endpoint and credentials.
 
 ## API
 
