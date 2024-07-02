@@ -1,129 +1,256 @@
 'use strict';
 
-import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3 } from 'ultralight-s3';
+import avro from 'avro-js';
+import { matchesQuery, generateUUID, inferAvroType } from './helpers.js';
+import { Buffer } from 'safe-buffer';
 
-// const _checkArgs = (...args) => {
-// 	for (const arg of args) {
-// 		if (typeof arg !== 'object' || arg === null) {
-// 			throw new Error('lowstorage: missing args or args not an object');
-// 		}
-// 	}
-// };
+const MODULE_NAME = 'lowstorage';
+const PROJECT_DIR_PREFIX = 'lowstorage/';
+const SCHEMA_SUFFIX = '.avro';
+const CHUNG_1MB = 1024 * 1024;
+const CHUNG_5MB = 5 * CHUNG_1MB;
 
-// const isAWS = !!(process.env.LAMBDA_TASK_ROOT || process.env.AWS_EXECUTION_ENV);
-// const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
-const _hasCrypto = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function';
-const _generateUUID = !!_hasCrypto ? () => crypto.randomUUID() : () => import('node:crypto').then((module) => module.randomUUID());
-
-const _matchesQuery = (document, query) => {
-	return Object.keys(query).every((key) => document[key] === query[key]);
-};
-
-const streamToString = (stream) =>
-	new Promise((resolve, reject) => {
-		const chunks = [];
-		stream.on('data', (chunk) => chunks.push(chunk));
-		stream.on('error', reject);
-		stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-	});
-
-class S3Store {
-	constructor({ endPoint, region, useSSL, accessKeyId, secretAccessKey, bucketName }) {
-		this.client = new S3Client({
-			endpoint: endPoint,
-			region: region,
-			credentials: {
-				accessKeyId: accessKeyId,
-				secretAccessKey: secretAccessKey,
-			},
-			forcePathStyle: true,
-		});
-		this.bucketName = bucketName;
+class lowstorage {
+	constructor(
+		options = {
+			accessKeyId: undefined,
+			secretAccessKey: undefined,
+			endpoint: undefined,
+			bucketName: undefined,
+			region: 'auto',
+			logger: null,
+		},
+	) {
+		_checkArgs(options);
+		this._schemas = new Map();
+		this._s3 = new S3(options);
 	}
 
-	async get(key) {
-		try {
-			const command = new GetObjectCommand({
-				Bucket: this.bucketName,
-				Key: key,
-			});
-			const response = await this.client.send(command);
-			const bodyContents = await streamToString(response.Body);
-			return JSON.parse(bodyContents);
-		} catch (error) {
-			if (error.name === 'NoSuchKey') {
-				return null;
+	_checkArgs = (args) => {
+		const requiredFields = ['accessKeyId', 'secretAccessKey', 'endpoint', 'bucketName'];
+		for (const field of requiredFields) {
+			if (!args[field]) {
+				throw new Error(`${MODULE_NAME}: ${field} is required`);
 			}
-			throw error;
+		}
+	};
+
+	async listCollections() {
+		const listed = await this._s3.list(PROJECT_DIR_PREFIX, '', 1000);
+		// fill the this._schemas map
+		for (const entry of listed) {
+			if (entry.key.endsWith(SCHEMA_SUFFIX)) {
+				const colName = entry.key.slice(PROJECT_DIR_PREFIX.length, -SCHEMA_SUFFIX.length);
+				const schema = await this._s3.get(entry.key);
+				this._schemas.set(colName, JSON.parse(schema));
+			}
+		}
+		return this._schemas.keys();
+	}
+
+	async createCollection(colName, schema = undefined) {
+		try {
+			if (colName === undefined || colName.trim() === '' || colName === null) {
+				throw new Error(`${MODULE_NAME}: Collection name is required`);
+			}
+			if (await this.collectionExists(colName)) {
+				throw new Error(`${MODULE_NAME}: Collection ${colName} already exists`);
+			}
+			if (schema) {
+				const avroType = avro.parse(schema);
+				this._schemas.set(colName, avroType);
+			}
+			return this.collection(colName, schema);
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
 		}
 	}
 
-	async put(key, data) {
-		const command = new PutObjectCommand({
-			Bucket: this.bucketName,
-			Key: key,
-			Body: data,
-			ContentType: 'application/json',
-		});
-		await this.client.send(command);
+	async removeCollection(colName) {
+		try {
+			const exists = await this._s3.fileExists(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`);
+			if (exists) {
+				const resp = await this._s3.delete(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`);
+				if (resp.statusCode === 200) {
+					return true;
+				}
+				return false;
+			}
+			return true;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 
-	async delete(key) {
-		const command = new DeleteObjectCommand({
-			Bucket: this.bucketName,
-			Key: key,
-		});
-		await this.client.send(command);
+	async collectionExists(colName) {
+		try {
+			const exists = await this._s3.fileExists(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`);
+			return exists;
+		} catch (error) {
+			if (error.message.includes('Not Found')) {
+				return false;
+			}
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 
-	async list(prefix = '') {
-		const command = new ListObjectsV2Command({
-			Bucket: this.bucketName,
-			Prefix: prefix,
-		});
-		const response = await this.client.send(command);
-		return response.Contents || [];
+	async updateCollectionSchema(colName, schema) {
+		try {
+			if (colName === undefined || colName.trim() === '' || colName === null) {
+				throw new Error(`${MODULE_NAME}: Collection name is required`);
+			}
+			// Check if collection exists
+			const exists = await this.collectionExists(colName);
+			if (!exists) {
+				throw new Error(`${MODULE_NAME}: Collection ${colName} does not exist`);
+			}
+			if (schema === undefined || schema === null) {
+				throw new Error(`${MODULE_NAME}: Schema is required`);
+			}
+
+			const avroType = avro.parse(schema);
+			this._schemas.set(colName, avroType);
+			const resp = await this._s3.put(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`, JSON.stringify(schema));
+			if (resp.statusCode === 200) {
+				return true;
+			} else {
+				throw new Error(`${MODULE_NAME}: Failed to update schema for collection ${colName}`);
+			}
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
+	}
+
+	async collection(colName, schema = undefined) {
+		try {
+			if (colName === undefined || colName.trim() === '' || colName === null) {
+				throw new Error(`${MODULE_NAME}: Collection name is required`);
+			}
+			if (typeof schema === 'undefined') {
+				// Load schema if not in memory
+				if (this._schemas.has(colName)) {
+					return new Collection(colName, this._s3, this._schemas.get(colName));
+				}
+				// check if schema file exists
+				const exists = await this._s3.fileExists(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`);
+				if (exists) {
+					const schemaContent = await this._s3.get(`${PROJECT_DIR_PREFIX}${colName}${SCHEMA_SUFFIX}`);
+					const avroType = avro.parse(schemaContent);
+					this._schemas.set(colName, avroType);
+					return new Collection(colName, this._s3, avroType);
+				}
+				return new Collection(colName, this._s3, undefined);
+			}
+			return new Collection(colName, this._s3, schema);
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 }
 
 class Collection {
-	constructor(colName, store) {
+	constructor(colName, s3, avroType = undefined) {
 		this._colName = colName;
-		this._store = store;
+		this._s3 = s3;
+		this._avroType = avroType;
 	}
 
-	async _loadData() {
-		const data = await this._store.get(`${this._colName}/${this._colName}.json`);
-		return data || [];
-	}
-
-	async _saveData(data) {
-		const key = `${this._colName}/${this._colName}.json`;
-		await this._store.put(key, JSON.stringify(data));
-	}
-
-	async insert(doc) {
-		if (!Array.isArray(doc)) {
-			doc = [doc];
-		}
-		const data = await this._loadData();
-		for (let item of doc) {
-			if (typeof item !== 'object' || item === null) {
-				throw new Error('Invalid input: input must be an object or an array of objects');
+	async insert(doc, schema = undefined) {
+		try {
+			if (doc === undefined || doc === null) {
+				throw new Error(`${MODULE_NAME}: Document is required for insert`);
 			}
-			item._id = item._id || _generateUUID();
-			data.push(item);
+			if (typeof doc !== 'object' && !Array.isArray(doc)) {
+				throw new Error(`${MODULE_NAME}: Document must be an object or an array`);
+			}
+			if (!Array.isArray(doc)) {
+				doc = [doc];
+			}
+			const avroType = avro.parse(schema) || this._avroType || avro.parse(inferAvroType(doc));
+			if (avroType === undefined) {
+				throw new Error(`${MODULE_NAME}: Schema is required - Pass a schema to the insert method`);
+			}
+			this._avroType = avroType;
+			const bufferData = await this._loadDataBuffer(); // load data from s3
+			const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+			for (let item of doc) {
+				if (typeof item !== 'object' || item === null) {
+					throw new Error('Invalid input: input must be an object or an array of objects');
+				}
+				const valid = this._avroType.isValid(item);
+				if (!valid) {
+					throw new Error(`${MODULE_NAME}: Invalid document or schema`);
+				}
+				item._id = item._id || generateUUID();
+				data.push(item);
+			}
+			const resp = await this._saveDataBuffer(this._avroType.toBuffer(data));
+			if (resp) {
+				return doc;
+			} else {
+				throw new Error(`${MODULE_NAME}: Failed to insert document`);
+			}
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
 		}
-		await this._saveData(data);
-		return doc.length === 1 ? doc[0] : doc;
+	}
+
+	async _loadDataBuffer() {
+		try {
+			const KEY = `${PROJECT_DIR_PREFIX}${this._colName}${DATA_SUFFIX}`;
+			const CHUNK_SIZE = this._s3.getMaxRequestSizeInBytes() || CHUNG_5MB;
+			let firstData = await this._s3.get(KEY);
+			if (firstData.length < CHUNK_SIZE) {
+				return Buffer.from(firstData, 'utf8');
+			}
+			let offset = CHUNK_SIZE;
+			let bufferArr = [Buffer.from(firstData, 'utf8')];
+			let repeat = true;
+			while (repeat) {
+				const nextDataResponse = await this._s3.getResponse(KEY, false, offset, offset + CHUNK_SIZE);
+				const nextDataBody = await nextDataResponse.text();
+				bufferArr.push(Buffer.from(nextDataBody, 'utf8'));
+				offset += CHUNG;
+				const contentLength = nextDataResponse.headers.get('content-length') || nextDataBody.length;
+				if (contentLength < CHUNK_SIZE) {
+					repeat = false;
+				}
+			}
+			return Buffer.concat(bufferArr);
+		} catch (error) {
+			if (error.toString().indexOf('status 404: Unknown - Not Found') > -1) {
+				return Buffer.from('');
+			}
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
+	}
+
+	async _saveDataBuffer(data) {
+		try {
+			const key = `${PROJECT_DIR_PREFIX}${this._colName}${DATA_SUFFIX}`;
+			const resp = await this._s3.put(key, data);
+			if (resp.statusCode === 200) {
+				return true;
+			} else {
+				throw new Error(`${MODULE_NAME}: Failed to save data`);
+			}
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 
 	async find(query = {}, options = {}) {
-		const data = await this._loadData();
-		const start = parseInt(options.skip, 10) || 0;
-		const end = parseInt(options.limit, 10) ? start + parseInt(options.limit, 10) : undefined;
-		const filteredData = data.filter((doc) => _matchesQuery(doc, query)).slice(start, end);
-		return filteredData;
+		try {
+			const bufferData = await this._loadDataBuffer(); // load data from s3
+			const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+			const start = parseInt(options.skip, 10) || 0;
+			const end = parseInt(options.limit, 10) ? start + parseInt(options.limit, 10) : undefined;
+			const filteredData = data.filter((doc) => matchesQuery(doc, query)).slice(start, end);
+			return filteredData;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 
 	async findOne(query = {}) {
@@ -131,70 +258,81 @@ class Collection {
 	}
 
 	async update(query = {}, update = {}) {
-		const data = await this._loadData();
-		let updatedCount = 0;
+		try {
+			const bufferData = await this._loadDataBuffer(); // load data from s3
+			const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+			let updatedCount = 0;
 
-		for (let i = 0; i < data.length; i++) {
-			if (_matchesQuery(data[i], query)) {
-				Object.assign(data[i], update);
-				updatedCount++;
+			for (let i = 0; i < data.length; i++) {
+				if (matchesQuery(data[i], query)) {
+					Object.assign(data[i], update);
+					updatedCount++;
+				}
 			}
-		}
 
-		if (updatedCount > 0) {
-			await this._saveData(data);
+			if (updatedCount > 0) {
+				const resp = await this._saveDataBuffer(this._avroType.toBuffer(data));
+				if (resp) {
+					return updatedCount;
+				}
+			}
+			return 0;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
 		}
-
-		return updatedCount;
 	}
 
 	async updateOne(query = {}, update = {}) {
-		const data = await this._loadData();
-		const docIndex = data.findIndex((doc) => _matchesQuery(doc, query));
+		try {
+			const bufferData = await this._loadDataBuffer(); // load data from s3
+			const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+			const docIndex = data.findIndex((doc) => matchesQuery(doc, query));
 
-		if (docIndex !== -1) {
-			Object.assign(data[docIndex], update);
-			await this._saveData(data);
-			return 1;
+			if (docIndex !== -1) {
+				Object.assign(data[docIndex], update);
+				const resp = await this._saveDataBuffer(this._avroType.toBuffer(data));
+				if (resp) {
+					return 1;
+				}
+			}
+			return 0;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
 		}
-		return 0;
 	}
 
 	async delete(query = {}) {
-		const data = await this._loadData();
-		const initialLength = data.length;
-		const newData = data.filter((doc) => !_matchesQuery(doc, query));
-		await this._saveData(newData);
-		return initialLength - newData.length;
+		try {
+			const bufferData = await this._loadDataBuffer(); // load data from s3
+			const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+			const initialLength = data.length;
+			const newData = data.filter((doc) => !matchesQuery(doc, query));
+			const resp = await this._saveDataBuffer(this._avroType.toBuffer(newData));
+			if (resp) {
+				return initialLength - newData.length;
+			}
+			return 0;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 
 	async count(query = {}) {
-		return (await this.find(query)).length;
-	}
-
-	async remove() {
-		const data = await this._loadData();
-		const deletedCount = data.length;
-		await this._saveData([]);
-		return deletedCount;
-	}
-}
-
-class lowstorage {
-	constructor(config) {
-		// _checkArgs(config);
-		this._store = new S3Store(config);
-	}
-
-	collection(colName) {
-		return new Collection(colName, this._store);
-	}
-
-	async listCollections() {
-		const listed = await this._store.list();
-		const collections = listed.filter((entry) => entry.Key.endsWith('.json'));
-		return collections.map((entry) => entry.Key.split('/')[0]);
+		try {
+			if (query === undefined || query === null) {
+				throw new Error(`${MODULE_NAME}: Query is required`);
+			}
+			if (Object.keys(obj).length === 0) {
+				const bufferData = await this._loadDataBuffer(); // load data from s3
+				const data = bufferData.length > 0 ? this._avroType.fromBuffer(bufferData) : [];
+				return data.length || null;
+			}
+			return (await this.find(query)).length;
+		} catch (error) {
+			throw new Error(`${MODULE_NAME}: ${error.message}`);
+		}
 	}
 }
 
 export default lowstorage;
+export { lowstorage };

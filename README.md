@@ -3,7 +3,7 @@
   <br>
 </h1>
 
-> <strong>Simple, single-dependency (@aws-sdk based), object pseudo-database for S3-compatible storages, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).</strong> <br> ![AWS S3](https://img.shields.io/badge/AWS%20S3-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white) [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE) <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-red.svg" alt="Contributions welcome" /></a>
+> <strong>Simple, zero-dependency, object pseudo-database for S3-compatible storages, strongly inspired by lowdb 🤗(https://github.com/typicode/lowdb/).</strong> <br> ![AWS S3](https://img.shields.io/badge/AWS%20S3-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white) [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/good-lly/lowstorage/blob/master/LICENSE) <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-red.svg" alt="Contributions welcome" /></a>
 
 [[github](https://github.com/good-lly/lowstorage)] [[npm](https://www.npmjs.com/package/lowstorage)]
 
@@ -22,13 +22,13 @@
 Since version 2.0.0, `lowstorage` has undergone significant changes:
 
 - **Constructor Changes**: The constructor now accepts S3-compatible configuration instead of being tied to Cloudflare R2.
-- **Support for Multiple Storages**: Now supports any S3-compatible storage like AWS S3, Cloudflare R2, Minio, Ceph, etc.
+- **Support for Multiple Storages**: Now supports any S3-compatible storage like AWS S3, Cloudflare R2, Minio, Ceph, DigitalOcean Spaces, Google Cloud Storage, etc. (see [S3-compatible storages](#s3-compatible-storages))
 
 If you are migrating from version 1.x.x, please review the new constructor parameters and usage examples below.
 
 ### Cloudflare R2 - S3 API Compatibility
 
-R2 implements the S3 API to allow users and their applications to migrate with ease. When comparing to AWS S3, Cloudflare has removed some API operations’ features and added others. The S3 API operations are listed below with their current implementation status. Feature implementation is currently in progress. Refer back to this page for updates. The API is available via the `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint. Find your account ID in the Cloudflare dashboard.
+R2 uses the S3 API to allow users and their applications to migrate with ease. When comparing to AWS S3, Cloudflare has removed some API operations’ features and added others. The S3 API operations are listed below with their current implementation status. Feature implementation is currently in progress. Refer back to this page for updates. The API is available via the `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint. Find your account ID in the Cloudflare dashboard.
 
 #### Bucket region
 
