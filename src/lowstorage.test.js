@@ -1,30 +1,41 @@
-const { unstable_dev } = require('wrangler');
-const supertest = require('supertest');
+// import { unstable_dev } from 'wrangler';
+// import supertest from 'supertest';
 
 console.log('🏃 Running tests...');
 
 let worker = null;
 let request;
+
 const usersToInsert = [
 	{ name: 'Alice', age: 30 },
 	{ name: 'Bob', age: 25 },
+	{ name: 'Charlie', age: 25 },
 ];
 
+const userAvroSchema = {
+	type: 'record',
+	name: 'User',
+	fields: [
+		{ name: 'name', type: 'string' },
+		{ name: 'age', type: 'int' },
+	],
+};
+
 beforeAll(async () => {
-	worker = await unstable_dev('./examples/src/index.js', {
-		config: './examples/wrangler.toml',
-		experimental: { disableExperimentalWarning: true },
-	});
-	const protocol = worker.proxyData.userWorkerUrl.protocol;
-	const hostname = worker.proxyData.userWorkerUrl.hostname;
-	const port = worker.proxyData.userWorkerUrl.port;
-	const fullUrl = `${protocol}//${hostname}:${port}`;
-	request = supertest(fullUrl);
-	console.log('✅ Worker started at ', fullUrl);
+	// worker = await unstable_dev('./examples/src/index.js', {
+	// 	config: './examples/wrangler.toml',
+	// 	experimental: { disableExperimentalWarning: true },
+	// });
+	// const protocol = worker.proxyData.userWorkerUrl.protocol;
+	// const hostname = worker.proxyData.userWorkerUrl.hostname;
+	// const port = worker.proxyData.userWorkerUrl.port;
+	// const fullUrl = `${protocol}//${hostname}:${port}`;
+	// request = supertest(fullUrl);
+	// console.log('✅ Worker started at ', fullUrl);
 });
 
 afterAll(async () => {
-	if (worker) await worker.stop();
+	// if (worker) await worker.stop();
 });
 
 test('POST /insertdata - inserts multiple users', async () => {
