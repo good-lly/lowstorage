@@ -2,6 +2,6 @@
 	"verbose": true,
 	"collectCoverage": false,
 	"testMatch": ["**/src/*.test.js"],
-	"collectCoverageFrom": ["src/lowstorage.js"],
-	"testEnvironment": "node"
+	"testEnvironment": "node",
+	"testTimeout": 20000
 }

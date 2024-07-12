@@ -13,14 +13,14 @@
 		"url": "git+https://github.com/good-lly/lowstorage.git"
 	},
 	"scripts": {
-		"test": "npm run build && jest --config=jest.config.json",
-		"build": "esbuild --bundle --sourcemap --platform=node --target=node19 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js --external:avro-js",
-		"dev": "node --env-file ./.env ./dev/dev-index.js"
+		"test": "node --env-file ./.env --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --no-cache",
+		"build": "esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js --external:avro-js",
+		"dev": "esbuild --bundle --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js  --external:avro-js && node --env-file ./.env ./dev/dev-index.js"
 	},
 	"license": "MIT",
 	"author": "Peter Jensen <peter@jensen.wtf>",
 	"engines": {
-		"node": ">=18.12.0"
+		"node": ">=20.0.0"
 	},
 	"jest": {
 		"collectCoverageFrom": [
@@ -28,17 +28,15 @@
 		]
 	},
 	"devDependencies": {
-		"avro-js": "^1.11.3",
 		"esbuild": "^0.23.0",
 		"jest": "^29.7.0",
 		"prettier": "^3.3.2",
 		"typescript": "^5.5.2",
-		"ultralight-s3": "^0.0.3",
 		"wrangler": "^3.62.0"
 	},
 	"dependencies": {
 		"avro-js": "^1.11.3",
-		"ultralight-s3": "^0.0.3"
+		"ultralight-s3": "^0.0.4"
 	},
 	"keywords": [
 		"storage",

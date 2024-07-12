@@ -1,11 +1,28 @@
 // import { unstable_dev } from 'wrangler';
+import { env } from 'node:process';
+import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../lib/lowstorage.js';
+
 // import supertest from 'supertest';
 
-console.log('🏃 Running tests...');
+const configCF = {
+	endpoint: env.CF_ENDPOINT,
+	region: env.CF_REGION,
+	accessKeyId: env.CF_ACCESS_KEY_ID,
+	secretAccessKey: env.CF_SECRET_ACCESS_KEY,
+	bucketName: env.CF_BUCKET_NAME,
+};
 
-let worker = null;
-let request;
+console.log('🏃 Running tests...', configCF);
 
+const configMinio = {
+	endPoint: env.MINIO_ENDPOINT,
+	port: env.MINIO_PORT,
+	region: env.MINIO_REGION,
+	useSSL: env.MINIO_USE_SSL,
+	accessKey: env.MINIO_ACCESS_KEY,
+	secretKey: env.MINIO_SECRET_KEY,
+	bucketName: env.MINIO_BUCKET_NAME,
+};
 const usersToInsert = [
 	{ name: 'Alice', age: 30 },
 	{ name: 'Bob', age: 25 },
@@ -16,188 +33,162 @@ const userAvroSchema = {
 	type: 'record',
 	name: 'User',
 	fields: [
+		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
 		{ name: 'name', type: 'string' },
 		{ name: 'age', type: 'int' },
 	],
 };
 
+const testColSchame = {
+	type: 'record',
+	name: 'TestCol',
+	fields: [
+		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
+		{ name: 'name', type: 'string' },
+		{ name: 'age', type: 'int' },
+	],
+};
+
+// let worker = null;
+let request;
+let lStorage;
+
 beforeAll(async () => {
-	// worker = await unstable_dev('./examples/src/index.js', {
-	// 	config: './examples/wrangler.toml',
-	// 	experimental: { disableExperimentalWarning: true },
-	// });
-	// const protocol = worker.proxyData.userWorkerUrl.protocol;
-	// const hostname = worker.proxyData.userWorkerUrl.hostname;
-	// const port = worker.proxyData.userWorkerUrl.port;
-	// const fullUrl = `${protocol}//${hostname}:${port}`;
-	// request = supertest(fullUrl);
-	// console.log('✅ Worker started at ', fullUrl);
+	console.time('lowstorage-test');
+	lStorage = new lowstorage(configCF);
 });
 
 afterAll(async () => {
-	// if (worker) await worker.stop();
+	console.timeEnd('lowstorage-test');
 });
 
-test('POST /insertdata - inserts multiple users', async () => {
-	for (const user of usersToInsert) {
-		const response = await request.post('/insertdata').send(user);
-		expect(response.status).toBe(200);
-		expect(response.body._id).toBeDefined();
+// full test basic operations on collection
+test('Collections | essentials check, create, list and delete collections', async () => {
+	// check if collections exist
+	const userColExists = await lStorage.collectionExists('userCol');
+	// expect to be bollean
+	expect(typeof userColExists).toBe('boolean');
+	if (userColExists) {
+		// try to create collection and get error
+		await expect(lStorage.createCollection('userCol', userAvroSchema)).rejects.toThrowError();
+		// remove collection
+		const removeCollection = await lStorage.removeCollection('userCol');
+		expect(removeCollection).toBe(true);
+		const doubleCheckIfExists = await lStorage.collectionExists('userCol');
+		expect(doubleCheckIfExists).toBe(false);
 	}
-});
+	// create collection now
+	const userCol = await lStorage.createCollection('userCol', userAvroSchema);
+	expect(userCol).toBeDefined();
+	const userColExists3 = await lStorage.collectionExists('userCol');
+	expect(userColExists3).toBe(true);
 
-test('GET /users-count - gets the correct user count', async () => {
-	const response = await request.get('/users-count');
-	expect(response.status).toBe(200);
-	// Assuming the response returns a plain text count
-	const userCount = parseInt(response.text, 10);
-	// Replace with the expected count after insertions
-	expect(userCount).toBe(2);
-});
+	const listCollections = await lStorage.listCollections();
+	expect(listCollections).toContain('userCol');
+	await expect(lStorage.createCollection('userCol', userAvroSchema)).rejects.toThrowError();
 
-test('GET /users - fetches all users', async () => {
-	const response = await request.get('/users');
-	expect(response.status).toBe(200);
-	expect(Array.isArray(response.body.users)).toBe(true);
-	expect(response.body.users.length).toBe(2); // Expect the inserted count
-});
-
-test('POST /update/:id - updates an existing user', async () => {
-	// 1. Insert a test user
-	const testUser = { name: 'John Doe', age: 35 };
-	const insertResponse = await request.post('/insertdata').send(testUser);
-	expect(insertResponse.status).toBe(200);
-
-	const userId = insertResponse.body._id;
-
-	// 2. Update user data
-	const updatedData = { name: 'Jane Smith', age: 30 };
-	const updateResponse = await request.post(`/update/${userId}`).send(updatedData);
-	expect(updateResponse.status).toBe(200);
-
-	// 3. Verify the update
-	const getResponse = await request.get(`/user/${userId}`);
-	expect(getResponse.status).toBe(200);
-	expect(getResponse.body.user.name).toBe('Jane Smith');
-	expect(getResponse.body.user.age).toBe(30);
-});
-
-test('GET /search/:value - finds users by name', async () => {
-	// Setup: Insert some test users
-	const testUsers = [
-		{ name: 'Alice', age: 28 },
-		{ name: 'Bob', age: 32 },
-		{ name: 'Charlie', age: 25 },
-		{ name: 'Alice', age: 30 }, // Another Alice
-	];
-
-	for (const user of testUsers) {
-		await request.post('/insertdata').send(user);
+	// check if collections exist
+	const testColExists = await lStorage.collectionExists('testCol');
+	// expect to be bollean
+	expect(typeof testColExists).toBe('boolean');
+	if (testColExists) {
+		// try to create collection and get error
+		await expect(lStorage.createCollection('testCol', testColSchame)).rejects.toThrowError();
+		// remove collection
+		const removeCollection = await lStorage.removeCollection('testCol');
+		expect(removeCollection).toBe(true);
+		const doubleCheckIfExists = await lStorage.collectionExists('testCol');
+		expect(doubleCheckIfExists).toBe(false);
 	}
 
-	// Test the search
-	const searchName = 'Alice';
-	const response = await request.get(`/search/${searchName}`);
+	await lStorage.createCollection('testCol', testColSchame);
 
-	expect(response.status).toBe(200);
-	expect(response.body.users).toBeInstanceOf(Array);
+	const testColExists2 = await lStorage.collectionExists('testCol');
+	expect(testColExists2).toBe(true);
 
-	// Ensure at least two 'Alice' entries are found
-	expect(response.body.users.length).toBeGreaterThanOrEqual(2);
+	const listCollections2 = await lStorage.listCollections();
+	console.log('listCollections', listCollections2);
+	expect(listCollections2).toContain('testCol');
+	expect(listCollections2).toContain('userCol');
+	expect(listCollections2.length).toBe(2);
 
-	// Verify that all returned users have the correct name
-	response.body.users.forEach((user) => {
-		expect(user.name).toBe(searchName);
-	});
+	const removeCollection = await lStorage.removeCollection('testCol');
+	expect(removeCollection).toBe(true);
+
+	const listCollections3 = await lStorage.listCollections();
+	expect(listCollections3).not.toContain('testCol');
+	expect(listCollections3).toContain('userCol');
+	expect(listCollections3.length).toBe(1);
+
+	const removeCollection2 = await lStorage.removeCollection('userCol');
+	expect(removeCollection2).toBe(true);
+
+	const listCollections4 = await lStorage.listCollections();
+	expect(listCollections4).not.toContain('testCol');
+	expect(listCollections4).not.toContain('userCol');
+	expect(listCollections4.length).toBe(0);
 });
+// test create collection
+test('Collections | create via createCollection', async () => {
+	const preListCheck = await lStorage.listCollections();
+	expect(preListCheck.length).toBe(0);
 
-test('GET /search/:value - finds users by name', async () => {
-	const searchName = 'Alice';
-	const response = await request.get(`/search/${searchName}`);
-	expect(response.status).toBe(200);
-	expect(response.body.users.length).toBeGreaterThanOrEqual(1);
-	expect(response.body.users[0].name).toBe(searchName);
+	const userCol = await lStorage.createCollection('userCol', userAvroSchema);
+	expect(userCol).toBeDefined();
+
+	const userColExists3 = await lStorage.collectionExists('userCol');
+	expect(userColExists3).toBe(true);
+
+	const listCollections = await lStorage.listCollections();
+	expect(listCollections).toContain('userCol');
+	expect(listCollections.length).toBe(1);
+
+	const removeCollection = await lStorage.removeCollection('userCol');
+	expect(removeCollection).toBe(true);
+
+	const listCollections2 = await lStorage.listCollections();
+	expect(listCollections2).not.toContain('userCol');
+	expect(listCollections2.length).toBe(0);
 });
+test('Collections | create via constructor', async () => {
+	const preListCheck = await lStorage.listCollections();
+	expect(preListCheck.length).toBe(0);
 
-test('GET /users - fetches users with limit and skip', async () => {
-	// Setup: Insert a decent number of test users (more than your typical limit)
-	const deleteResponse = await request.get('/users-delete-all');
-	expect(deleteResponse.status).toBe(200);
+	const userCol = await lStorage.collection('userCol', userAvroSchema);
+	expect(userCol).toBeDefined();
 
-	// Verify count is zero
-	const countResponse = await request.get('/users-count');
-	expect(countResponse.status).toBe(200);
-	expect(parseInt(countResponse.text, 10)).toBe(0);
+	const userColExists = await lStorage.collectionExists('userCol');
+	expect(userColExists).toBe(true);
 
-	const testUsers = [];
-	for (let i = 0; i < 20; i++) {
-		testUsers.push({ name: `User ${i}`, age: 25 + i });
-	}
+	const listCollections = await lStorage.listCollections();
+	expect(listCollections).toContain('userCol');
+	expect(listCollections.length).toBe(1);
+	const removeCollection = await lStorage.removeCollection('userCol');
+	expect(removeCollection).toBe(true);
 
-	for (const user of testUsers) {
-		await request.post('/insertdata').send(user);
-	}
-
-	// Test 1: Limit only
-	const limit = 5;
-	const response1 = await request.get('/users').query({ limit });
-
-	expect(response1.status).toBe(200);
-	expect(response1.body.users.length).toBe(limit);
-
-	// Test 2: Skip only
-	const skip = 3;
-	const response2 = await request.get('/users').query({ skip });
-
-	expect(response2.status).toBe(200);
-	expect(response2.body.users.length).toBe(testUsers.length - skip);
-	expect(response2.body.users[0].name).toBe(`User ${skip}`); // Verify skip worked
-
-	// Test 3: Limit and skip combined
-	const limit2 = 4;
-	const skip2 = 5;
-	const response3 = await request.get('/users').query({ limit: limit2, skip: skip2 });
-
-	expect(response3.status).toBe(200);
-	expect(response3.body.users.length).toBe(limit2);
-	expect(response3.body.users[0].name).toBe(`User ${skip2}`);
+	const listCollections2 = await lStorage.listCollections();
+	expect(listCollections2).not.toContain('userCol');
+	expect(listCollections2.length).toBe(0);
 });
+test('Collections | error cases and error codes', async () => {
+	// Test create collection error
+	await expect(lStorage.createCollection()).rejects.toThrow(lowstorageError);
+	await expect(lStorage.createCollection()).rejects.toThrow(lowstorage_ERROR_CODES.CREATE_COLLECTION_ERROR);
 
-test('GET /users-delete-all - deletes all users', async () => {
-	const deleteResponse = await request.get('/users-delete-all');
-	expect(deleteResponse.status).toBe(200);
+	// Test collection already exists error
+	await lStorage.createCollection('testCol', testColSchame);
+	await expect(lStorage.createCollection('testCol', testColSchame)).rejects.toThrow(lowstorageError);
+	await expect(lStorage.createCollection('testCol', testColSchame)).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_EXISTS);
 
-	// Verify count is zero
-	const countResponse = await request.get('/users-count');
-	expect(countResponse.status).toBe(200);
-	expect(parseInt(countResponse.text, 10)).toBe(0);
-});
+	// TODO: test update collection schema error
+	// Test rename collection error
+	await expect(lStorage.renameCollection('testCol', 'testCol2')).rejects.toThrow(lowstorageError);
+	await expect(lStorage.renameCollection('testCol', 'testCol2')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 
-test('POST /insertdata - handles very long user names ', async () => {
-	const veryLongName = 'X'.repeat(256); // Assume some maximum name length
-	const user = { name: veryLongName, age: 30 };
-	const response = await request.post('/insertdata').send(user);
-	// Option 2: Expect truncation (if your app silently truncates)
-	expect(response.status).toBe(200);
-	expect(response.body.name.length).toBeLessThanOrEqual(256); // Max length
-});
+	// await expect(lStorage.renameCollection('testCol2', 'testCol')).rejects.toThrow(lowstorageError);
+	// await expect(lStorage.renameCollection('testCol2', 'testCol')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 
-test('GET /search/:value - handles non-existent search values', async () => {
-	const searchName = 'NonExistentUser';
-	const response = await request.get(`/search/${searchName}`);
-	expect(response.status).toBe(200);
-	expect(response.body.users).toEqual([]); // Empty array
-});
-
-test('GET /users-delete-all - handles deletion on an empty collection', async () => {
-	// Ensure the collection is empty before the test
-	await request.get('/users-delete-all');
-	const deleteResponse = await request.get('/users-delete-all');
-
-	// Choose the appropriate expectation
-	// Option 1: Success
-	expect(deleteResponse.status).toBe(200);
-
-	// Option 2: Error (if your app design dictates)
-	// expect(deleteResponse.status).toBe(404); // Or another suitable error code
+	// // Test remove collection error
+	// await expect(lStorage.removeCollection('testCol2')).rejects.toThrow(lowstorageError);
+	// await expect(lStorage.removeCollection('testCol2')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 });

@@ -142,6 +142,10 @@ async function lowstorageRun() {
 		const newUsers = await userCol.insert(usersToInsert);
 		//console.log('newUsers', newUsers);
 
+		// list all collections
+		const listCollections = await ls_cf.listCollections();
+		console.log('listCollections', listCollections);
+
 		// list all users
 		const allUsers = await userCol.find({});
 		console.log('allUsers', allUsers);
@@ -185,7 +189,7 @@ async function lowstorageRun() {
 
 		// delete collection
 		const deleteCollection = await ls_cf.removeCollection('users');
-		//console.log('deleteCollection', deleteCollection);
+		console.log('deleteCollection', deleteCollection);
 	} finally {
 		console.timeEnd('lowstorage');
 	}
