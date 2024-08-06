@@ -56,6 +56,11 @@ let lStorage;
 beforeAll(async () => {
 	console.time('lowstorage-test');
 	lStorage = new lowstorage(configCF);
+	// clean up any existing collections
+	const listCollections = await lStorage.listCollections();
+	for (const col of listCollections) {
+		await lStorage.removeCollection(col);
+	}
 });
 
 afterAll(async () => {
@@ -63,7 +68,7 @@ afterAll(async () => {
 });
 
 // full test basic operations on collection
-test('Collections | essentials check, create, list and delete collections', async () => {
+test('Collections | basic CRUD operations', async () => {
 	// check if collections exist
 	const userColExists = await lStorage.collectionExists('userCol');
 	// expect to be bollean
@@ -180,15 +185,77 @@ test('Collections | error cases and error codes', async () => {
 	await expect(lStorage.createCollection('testCol', testColSchame)).rejects.toThrow(lowstorageError);
 	await expect(lStorage.createCollection('testCol', testColSchame)).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_EXISTS);
 
-	// TODO: test update collection schema error
+	const listCollections = await lStorage.listCollections();
+	console.log('listCollections::::: ', listCollections);
+	expect(listCollections).toContain('testCol');
+
+	// Verify the collection exists before attempting to rename
+	const testColExists = await lStorage.collectionExists('testCol');
+	expect(testColExists).toBe(true);
+
+	// Test rename collection
+	await expect(lStorage.renameCollection('testCol', 'testCol2')).resolves.not.toThrow();
+	const listCollectionsAfterRename = await lStorage.listCollections();
+	expect(listCollectionsAfterRename).not.toContain('testCol');
+	expect(listCollectionsAfterRename).toContain('testCol2');
+
+	// Verify the collection exists after renaming
+	const testCol2Exists = await lStorage.collectionExists('testCol2');
+	expect(testCol2Exists).toBe(true);
+
 	// Test rename collection error
 	await expect(lStorage.renameCollection('testCol', 'testCol2')).rejects.toThrow(lowstorageError);
 	await expect(lStorage.renameCollection('testCol', 'testCol2')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 
-	// await expect(lStorage.renameCollection('testCol2', 'testCol')).rejects.toThrow(lowstorageError);
-	// await expect(lStorage.renameCollection('testCol2', 'testCol')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
-
 	// // Test remove collection error
-	// await expect(lStorage.removeCollection('testCol2')).rejects.toThrow(lowstorageError);
-	// await expect(lStorage.removeCollection('testCol2')).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
+	await expect(lStorage.removeCollection('testCol')).rejects.toThrow(lowstorageError);
+	await expect(lStorage.removeCollection('testCol')).rejects.toThrow(lowstorage_ERROR_CODES.REMOVE_COLLECTION_ERROR);
+
+	// Test update collection schema error - NOT IMPLEMENTED
+	// const testColSchema = {
+	// 	type: 'record',
+	// 	name: 'TestCol',
+	// 	fields: [
+	// 		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
+	// 		{ name: 'name', type: 'string' },
+	// 		{ name: 'age', type: 'int' },
+	// 	],
+	// };
+	// await expect(lStorage.updateCollectionSchema('testCol', testColSchema)).rejects.toThrow(lowstorageError);
+	// await expect(lStorage.updateCollectionSchema('testCol', testColSchema)).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
+
+	// Test schema validation error
+	const invalidSchema = { type: 'invalid' };
+	await expect(lStorage.createCollection('invalidSchemaCol', invalidSchema)).rejects.toThrow(
+		lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
+	);
+
+	// Test document validation error
+	const col = await lStorage.collection('testCol2');
+	await expect(col.insert({ invalidField: 'value' })).rejects.toThrow(lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR);
+
+	// Test insert error
+	await expect(col.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
+
+	// Test update error
+	await expect(col.update(null, { field: 'value' })).rejects.toThrow(lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+
+	// Test update one error
+	await expect(col.updateOne(null, { field: 'value' })).rejects.toThrow(lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+
+	// Test delete error
+	await expect(col.delete(null)).rejects.toThrow(lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+
+	// Test count error - wrong argument
+	await expect(col.count(null)).rejects.toThrow(lowstorage_ERROR_CODES.COUNT_ERROR);
+	await expect(col.count()).toBe(0);
+
+	// Test remove collection error
+	await expect(lStorage.removeCollection(null)).rejects.toThrow(lowstorage_ERROR_CODES.REMOVE_COLLECTION_ERROR);
+
+	// Test rename collection error
+	await expect(lStorage.renameCollection(null, 'newName')).rejects.toThrow(lowstorage_ERROR_CODES.RENAME_COLLECTION_ERROR);
+
+	// Clean up
+	await lStorage.removeCollection('testCol2');
 });
