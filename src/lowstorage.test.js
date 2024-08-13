@@ -1,8 +1,5 @@
-// import { unstable_dev } from 'wrangler';
 import { env } from 'node:process';
 import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../lib/lowstorage.js';
-
-// import supertest from 'supertest';
 
 const configCF = {
 	endpoint: env.CF_ENDPOINT,
@@ -248,7 +245,8 @@ test('Collections | error cases and error codes', async () => {
 
 	// Test count error - wrong argument
 	await expect(col.count(null)).rejects.toThrow(lowstorage_ERROR_CODES.COUNT_ERROR);
-	await expect(col.count()).toBe(0);
+	const count = await col.count();
+	await expect(count).toBe(0);
 
 	// Test remove collection error
 	await expect(lStorage.removeCollection(null)).rejects.toThrow(lowstorage_ERROR_CODES.REMOVE_COLLECTION_ERROR);
@@ -258,4 +256,167 @@ test('Collections | error cases and error codes', async () => {
 
 	// Clean up
 	await lStorage.removeCollection('testCol2');
+});
+
+test('Document | CRUD operations', async () => {
+	// Test insert
+	const col = await lStorage.collection('testCol');
+	const insertData = await col.insert({ name: 'Carlos', age: 25 });
+	expect(insertData).toBeDefined();
+	expect(insertData).toHaveLength(1);
+	expect(insertData[0]).toHaveProperty('_id');
+	expect(insertData[0]).toHaveProperty('name', 'Carlos');
+	expect(insertData[0]).toHaveProperty('age', 25);
+
+	// Test by find
+	const findData = await col.find({ name: 'Carlos' });
+	expect(findData).toBeDefined();
+	expect(findData).toHaveLength(1);
+	expect(findData[0]).toHaveProperty('_id');
+	expect(findData[0]).toHaveProperty('name', 'Carlos');
+	expect(findData[0]).toHaveProperty('age', 25);
+
+	// Test insert with schema
+	const insertDataWithSchema = await col.insert({ name: 'Carlos', age: 25 }, userAvroSchema);
+	expect(insertDataWithSchema).toBeDefined();
+	expect(insertDataWithSchema).toHaveLength(1);
+	expect(insertDataWithSchema[0]).toHaveProperty('_id');
+	expect(insertDataWithSchema[0]).toHaveProperty('name', 'Carlos');
+	expect(insertDataWithSchema[0]).toHaveProperty('age', 25);
+
+	// Test by find
+	const findDataWithSchema = await col.find({ name: 'Carlos' });
+	expect(findDataWithSchema).toBeDefined();
+	expect(findDataWithSchema).toHaveLength(2);
+	expect(findDataWithSchema[0]).toHaveProperty('_id');
+	expect(findDataWithSchema[0]).toHaveProperty('name', 'Carlos');
+	expect(findDataWithSchema[0]).toHaveProperty('age', 25);
+
+	// test count
+	const count = await col.count({ name: 'Carlos' });
+	expect(count).toBe(2);
+
+	const count2 = await col.count();
+	expect(count2).toBe(2);
+
+	const count3 = await col.count({ name: 'Carlos2' });
+	expect(count3).toBe(0);
+
+	// Test insert with invalid schema
+	const invalidSchema = { type: 'invalid' };
+	await expect(col.insert({ name: 'Carlos', age: 25 }, invalidSchema)).rejects.toThrow(lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
+
+	// Test insert with invalid data
+	await expect(col.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
+
+	// Test insert with array
+	const insertDataArray = await col.insert([
+		{ name: 'Carlos', age: 25 },
+		{ name: 'Bob', age: 30 },
+	]);
+	expect(insertDataArray).toBeDefined();
+	expect(insertDataArray).toHaveLength(2);
+	expect(insertDataArray[0]).toHaveProperty('_id');
+	expect(insertDataArray[0]).toHaveProperty('name', 'Carlos');
+	expect(insertDataArray[0]).toHaveProperty('age', 25);
+	expect(insertDataArray[1]).toHaveProperty('_id');
+	expect(insertDataArray[1]).toHaveProperty('name', 'Bob');
+	expect(insertDataArray[1]).toHaveProperty('age', 30);
+
+	// Test insert with array and schema
+	const insertDataArrayWithSchema = await col.insert(
+		[
+			{ name: 'Carlos', age: 25 },
+			{ name: 'Bob', age: 30 },
+		],
+		userAvroSchema,
+	);
+	expect(insertDataArrayWithSchema).toBeDefined();
+	expect(insertDataArrayWithSchema).toHaveLength(2);
+	expect(insertDataArrayWithSchema[0]).toHaveProperty('_id');
+	expect(insertDataArrayWithSchema[0]).toHaveProperty('name', 'Carlos');
+	expect(insertDataArrayWithSchema[0]).toHaveProperty('age', 25);
+	expect(insertDataArrayWithSchema[1]).toHaveProperty('_id');
+	expect(insertDataArrayWithSchema[1]).toHaveProperty('name', 'Bob');
+	expect(insertDataArrayWithSchema[1]).toHaveProperty('age', 30);
+
+	// Test insert with invalid array
+	await expect(col.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
+
+	// Test insert with invalid array and schema
+	await expect(
+		col.insert(
+			[
+				{ name: 'Carlos', age: 25 },
+				{ name: 'Bob', age: 30 },
+			],
+			invalidSchema,
+		),
+	).rejects.toThrow(lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
+
+	// Test update
+	const updateData = await col.update({ name: 'Carlos' }, { name: 'Carlos2' });
+	expect(updateData).toBeDefined();
+	expect(updateData).toHaveLength(4);
+	expect(updateData[0]).toHaveProperty('_id');
+	expect(updateData[0]).toHaveProperty('name', 'Carlos2');
+	expect(updateData[0]).toHaveProperty('age', 25);
+
+	// Test update with invalid array
+	await expect(col.update(null, { name: 'Carlos2' })).rejects.toThrow(lowstorage_ERROR_CODES.UPDATE_ERROR);
+
+	// Test delete
+	const deleteData = await col.delete({ name: 'Carlos2' });
+	expect(deleteData).toBeDefined();
+	expect(deleteData).toHaveLength(1);
+	expect(deleteData[0]).toHaveProperty('_id');
+	expect(deleteData[0]).toHaveProperty('name', 'Carlos2');
+	expect(deleteData[0]).toHaveProperty('age', 25);
+
+	// Test delete with schema
+	const deleteDataWithSchema = await col.delete({ name: 'Carlos2' }, userAvroSchema);
+	expect(deleteDataWithSchema).toBeDefined();
+	expect(deleteDataWithSchema).toHaveLength(1);
+	expect(deleteDataWithSchema[0]).toHaveProperty('_id');
+	expect(deleteDataWithSchema[0]).toHaveProperty('name', 'Carlos2');
+	expect(deleteDataWithSchema[0]).toHaveProperty('age', 25);
+
+	// Test delete with invalid schema
+	await expect(col.delete({ name: 'Carlos2' }, invalidSchema)).rejects.toThrow(lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
+
+	// Test delete with invalid data
+	await expect(col.delete(null)).rejects.toThrow(lowstorage_ERROR_CODES.DELETE_ERROR);
+
+	// Test delete with array
+	const deleteDataArray = await col.delete([{ name: 'Carlos2' }, { name: 'Bob' }]);
+	expect(deleteDataArray).toBeDefined();
+	expect(deleteDataArray).toHaveLength(2);
+	expect(deleteDataArray[0]).toHaveProperty('_id');
+	expect(deleteDataArray[0]).toHaveProperty('name', 'Carlos2');
+	expect(deleteDataArray[0]).toHaveProperty('age', 25);
+	expect(deleteDataArray[1]).toHaveProperty('_id');
+	expect(deleteDataArray[1]).toHaveProperty('name', 'Bob');
+	expect(deleteDataArray[1]).toHaveProperty('age', 30);
+
+	// Test delete with array and schema
+	const deleteDataArrayWithSchema = await col.delete([{ name: 'Carlos2' }, { name: 'Bob' }], userAvroSchema);
+	expect(deleteDataArrayWithSchema).toBeDefined();
+	expect(deleteDataArrayWithSchema).toHaveLength(2);
+	expect(deleteDataArrayWithSchema[0]).toHaveProperty('_id');
+	expect(deleteDataArrayWithSchema[0]).toHaveProperty('name', 'Carlos2');
+	expect(deleteDataArrayWithSchema[0]).toHaveProperty('age', 25);
+	expect(deleteDataArrayWithSchema[1]).toHaveProperty('_id');
+	expect(deleteDataArrayWithSchema[1]).toHaveProperty('name', 'Bob');
+	expect(deleteDataArrayWithSchema[1]).toHaveProperty('age', 30);
+
+	// Test delete with invalid array
+	await expect(col.delete(null)).rejects.toThrow(lowstorage_ERROR_CODES.DELETE_ERROR);
+
+	// Test delete with invalid array and schema
+	await expect(col.delete([{ name: 'Carlos2' }, { name: 'Bob' }], invalidSchema)).rejects.toThrow(
+		lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
+	);
+
+	// cleanup
+	await lStorage.removeCollection('testCol');
 });

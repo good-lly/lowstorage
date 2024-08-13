@@ -3,5 +3,6 @@
 	"collectCoverage": false,
 	"testMatch": ["**/src/*.test.js"],
 	"testEnvironment": "node",
-	"testTimeout": 20000
+	"testTimeout": 20000,
+	"silent": false
 }

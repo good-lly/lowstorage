@@ -51,7 +51,50 @@ const CHUNG_5MB = 5 * CHUNG_1MB;
 // DocumentValidationError ✅
 // S3OperationError ✅
 
+/**
+ * lowstorage class for managing collections and performing operations on top of S3-compatible storages.
+ * @class
+ * @example
+ * const storage = new lowstorage({
+ * 	accessKeyId: 'YOUR_ACCESS_KEY',
+ * 	secretAccessKey: 'YOUR_SECRET_KEY',
+ * 	endpoint: 'YOUR_ENDPOINT',
+ * 	bucketName: 'YOUR_BUCKET_NAME',
+ * 	region: 'YOUR_REGION',
+ * });
+ *
+ * // Create a collection
+ * const userCol = await storage.collection('users');
+ *
+ * // Insert a document
+ * await userCol.insert({
+ * 	name: 'Kevin',
+ * 	gender: 'whatever',
+ * 	posts: [],
+ * });
+ *
+ * // Show all users
+ * const allUsers = await userCol.find({});
+ *
+ * // Find users with pagination (e.g., page 2, 10 users per page)
+ * const secondPageUsers = await userCol.find({}, { skip: 10, limit: 10 });
+ *
+ * // Find user by ID and update name
+ * await userCol.update({ _id: id }, { name: 'Carlos' });
+ */
 class lowstorage {
+	/**
+	 * Create a new lowstorage instance.
+	 * @param {Object} options - Configuration options for lowstorage.
+	 * @param {string} options.accessKeyId - S3 access key ID.
+	 * @param {string} options.secretAccessKey - S3 secret access key.
+	 * @param {string} options.endpoint - S3 endpoint URL.
+	 * @param {string} options.bucketName - S3 bucket name.
+	 * @param {string} [options.region='auto'] - S3 region.
+	 * @param {Object} [options.logger=null] - Logger object.
+	 * @param {string} [options.dirPrefix=PROJECT_DIR_PREFIX] - Directory prefix for collections.
+	 * @returns {lowstorage} A new lowstorage instance.
+	 */
 	constructor(
 		options = {
 			accessKeyId: undefined,
@@ -85,6 +128,11 @@ class lowstorage {
 		}
 	};
 
+	/**
+	 * List all collections.
+	 * @returns {Promise<string[]>} An array of collection names.
+	 * @throws {S3OperationError} If there's an error during S3 operation.
+	 */
 	async listCollections() {
 		try {
 			const listed = await this._s3.list(DEFAULT_DELIMITER, this._dirPrefix);
@@ -96,6 +144,12 @@ class lowstorage {
 		}
 	}
 
+	/**
+	 * Check if a collection exists.
+	 * @param {string} colName - The name of the collection.
+	 * @returns {Promise<boolean>} True if the collection exists, false otherwise.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async collectionExists(colName) {
 		try {
 			this._hasColName(colName);
@@ -109,6 +163,14 @@ class lowstorage {
 		}
 	}
 
+	/**
+	 * Create a new collection.
+	 * @param {string} colName - The name of the collection.
+	 * @param {Object} [schema] - The schema for the collection.
+	 * @param {Array} [data=[]] - The initial data for the collection.
+	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async createCollection(colName, schema, data = []) {
 		try {
 			this._hasColName(colName);
@@ -126,6 +188,12 @@ class lowstorage {
 		}
 	}
 
+	/**
+	 * Remove a collection.
+	 * @param {string} colName - The name of the collection.
+	 * @returns {Promise<boolean>} A Promise that resolves to true if the collection is removed, false otherwise.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async removeCollection(colName) {
 		try {
 			this._hasColName(colName);
@@ -151,6 +219,13 @@ class lowstorage {
 		}
 	}
 
+	/**
+	 * Rename a collection.
+	 * @param {string} oldColName - The current name of the collection.
+	 * @param {string} newColName - The new name of the collection.
+	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async renameCollection(oldColName, newColName) {
 		try {
 			this._hasColName(oldColName);
@@ -208,6 +283,14 @@ class lowstorage {
 	// 	}
 	// }
 
+	/**
+	 * Get or create a collection.
+	 * @param {string} colName - The name of the collection.
+	 * @param {Object} [schema] - The schema for the collection.
+	 * @param {boolean} [autoCreate=true] - Whether to automatically create the collection if it doesn't exist.
+	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async collection(colName, schema, autoCreate = true) {
 		try {
 			this._hasColName(colName);
@@ -250,12 +333,55 @@ class lowstorage {
 		}
 	}
 
+	/**
+	 * Get the S3 instance associated with the lowstorage instance.
+	 * @returns {S3} The S3 instance. Use this to perform S3 operations. Check for ultralight-s3 for more details.
+	 */
 	s3 = () => {
 		return this._s3;
 	};
 }
 
+/**
+ * Collection class for managing documents in a collection.
+ * @class
+ * @example
+ * const storage = new lowstorage({
+ * 	accessKeyId: 'YOUR_ACCESS_KEY',
+ * 	secretAccessKey: 'YOUR_SECRET_KEY',
+ * 	endpoint: 'YOUR_ENDPOINT',
+ * 	bucketName: 'YOUR_BUCKET_NAME',
+ * 	region: 'YOUR_REGION',
+ * });
+ *
+ * // Create a collection
+ * const userCol = await storage.collection('users');
+ *
+ * // Insert a document
+ * await userCol.insert({
+ * 	name: 'Kevin',
+ * 	gender: 'whatever',
+ * 	posts: [],
+ * });
+ *
+ * // Show all users
+ * const allUsers = await userCol.find({});
+ *
+ * // Find users with pagination (e.g., page 2, 10 users per page)
+ * const secondPageUsers = await userCol.find({}, { skip: 10, limit: 10 });
+ *
+ * // Find user by ID and update name
+ * await userCol.update({ _id: id }, { name: 'Carlos' });
+ */
 class Collection {
+	/**
+	 * Create a new Collection instance.
+	 * @param {string} colName - The name of the collection.
+	 * @param {S3} s3 - The S3 instance.
+	 * @param {Object} [avroType=undefined] - The Avro type for the collection.
+	 * @param {string} [dirPrefix=PROJECT_DIR_PREFIX] - The directory prefix for the collection.
+	 * @returns {Collection} A new Collection instance.
+	 */
 	constructor(colName, s3, avroType = undefined, dirPrefix = PROJECT_DIR_PREFIX) {
 		this._colName = colName;
 		this._s3 = s3;
@@ -264,6 +390,13 @@ class Collection {
 		this._dirPrefix = dirPrefix;
 	}
 
+	/**
+	 * Insert a document into the collection.
+	 * @param {Object|Array} doc - The document to insert.
+	 * @param {Object} [schema=undefined] - The schema for the document.
+	 * @returns {Promise<Array>} A Promise that resolves to the array of inserted document(s).
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async insert(doc, schema = undefined) {
 		try {
 			if (doc === undefined || doc === null) {
@@ -369,6 +502,15 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Find documents in the collection.
+	 * @param {Object} [query={}] - The query to filter documents.
+	 * @param {Object} [options={}] - The options for pagination.
+	 * @param {number} [options.skip=0] - The number of documents to skip. Default is 0.
+	 * @param {number} [options.limit=undefined] - The maximum number of documents to return. Default is undefined, which means no limit.
+	 * @returns {Promise<Array>} A Promise that resolves to an array of matching documents.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async find(query = {}, options = {}) {
 		try {
 			if (query === undefined || query === null) {
@@ -389,22 +531,44 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Find the first document in the collection that matches the query.
+	 * @param {Object} [query={}] - The query to filter documents.
+	 * @returns {Promise<Object|null>} A Promise that resolves to the first matching document or null if no match is found.
+	 * @throws {lowstorageError} If there's an error.
+	 */
 	async findOne(query = {}) {
 		try {
-			if (query === undefined || query === null) {
-				throw new lowstorageError(`${MODULE_NAME}: Query is required for update`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+			if (query === null) {
+				throw new lowstorageError(`${MODULE_NAME}: Query cannot be null`, lowstorage_ERROR_CODES.INVALID_ARGUMENT);
 			}
-			const result = await this.find(query);
-			return result[0] || [];
+			const result = await this.find(query, { limit: 1 });
+			return result[0] || null;
 		} catch (error) {
+			if (error instanceof lowstorageError) {
+				throw error;
+			}
 			throw new lowstorageError(`${MODULE_NAME}: FindOne operation failed: ${error.message}`, lowstorage_ERROR_CODES.FIND_ONE_ERROR);
 		}
 	}
 
+	/**
+	 * Update a single document in the collection that matches the query.
+	 * @param {Object} [query={}] - The query to filter the document to update.
+	 * @param {Object} [update={}] - The update operations to apply to the matching document.
+	 * @returns {Promise<number>} A Promise that resolves to 1 if a document was updated, 0 otherwise.
+	 * @throws {lowstorageError} If the updateOne operation fails.
+	 * @throws {SchemaValidationError} If the schema is not defined for the collection.
+	 * @throws {DocumentValidationError} If the updated document is invalid.
+	 * @throws {S3OperationError} If the S3 operation fails.
+	 */
 	async update(query = {}, update = {}) {
 		try {
 			if (query === undefined || query === null || update === undefined || update === null) {
-				throw new lowstorageError(`${MODULE_NAME}: Query is required for update`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+				throw new lowstorageError(
+					`${MODULE_NAME}: Query and update values are required for update`,
+					lowstorage_ERROR_CODES.MISSING_ARGUMENT,
+				);
 			}
 			if (!this._avroType) {
 				throw new SchemaValidationError(
@@ -448,6 +612,16 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Update a single document in the collection that matches the query.
+	 * @param {Object} [query={}] - The query to filter the document to update.
+	 * @param {Object} [update={}] - The update operations to apply to the matching document.
+	 * @returns {Promise<number>} A Promise that resolves to 1 if a document was updated, 0 otherwise.
+	 * @throws {lowstorageError} If the updateOne operation fails.
+	 * @throws {SchemaValidationError} If the schema is not defined for the collection.
+	 * @throws {DocumentValidationError} If the updated document is invalid.
+	 * @throws {S3OperationError} If the S3 operation fails.
+	 */
 	async updateOne(query = {}, update = {}) {
 		try {
 			if (query === undefined || query === null || update === undefined || update === null) {
@@ -487,6 +661,13 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Delete documents from the collection.
+	 * @param {Object} [query={}] - The query to filter documents to delete.
+	 * @returns {Promise<number>} A Promise that resolves to the number of documents deleted.
+	 * @throws {lowstorageError} If the delete operation fails.
+	 * @throws {S3OperationError} If the S3 operation fails.
+	 */
 	async delete(query = {}) {
 		try {
 			if (query === undefined || query === null) {
@@ -511,6 +692,12 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Delete all documents from the collection.
+	 * @returns {Promise<number>} A Promise that resolves to the number of documents deleted.
+	 * @throws {lowstorageError} If the delete operation fails.
+	 * @throws {S3OperationError} If the S3 operation fails.
+	 */
 	async deleteAll() {
 		try {
 			const bufferData = await this._loadDataBuffer(); // load data from s3
@@ -532,15 +719,16 @@ class Collection {
 		}
 	}
 
+	/**
+	 * Count the number of documents in the collection.
+	 * @param {Object} [query={}] - The query to filter documents.
+	 * @returns {Promise<number>} A Promise that resolves to the number of documents in the collection.
+	 * @throws {lowstorageError} If the count operation fails.
+	 */
 	async count(query = {}) {
 		try {
-			if (Object.keys(query).length === 0) {
-				const bufferData = await this._loadDataBuffer(); // load data from s3
-				if (bufferData.length === 0) return 0;
-				const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
-				return wrapperType.fromBuffer(bufferData).length || 0;
-			}
-			return (await this.find(query)).length;
+			const data = await this.find(query);
+			return data.length;
 		} catch (error) {
 			throw new lowstorageError(`${MODULE_NAME}: Count operation failed: ${error.message}`, lowstorage_ERROR_CODES.COUNT_ERROR);
 		}
