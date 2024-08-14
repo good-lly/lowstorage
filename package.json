@@ -36,7 +36,7 @@
 	},
 	"dependencies": {
 		"avro-js": "^1.11.3",
-		"ultralight-s3": "^0.0.4"
+		"ultralight-s3": "^0.0.5"
 	},
 	"keywords": [
 		"storage",
