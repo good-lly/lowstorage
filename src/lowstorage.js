@@ -18,9 +18,16 @@ const PROJECT_DIR_PREFIX = 'lowstorage';
 const COL_SUFFIX = '.avro';
 const CHUNG_1MB = 1024 * 1024;
 const CHUNG_5MB = 5 * CHUNG_1MB;
+const EMPTY_DATA = Buffer.from('', 'utf8');
 
 const errorValidationFn = (errorCode = lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR) => {
 	throw new DocumentValidationError(`${MODULE_NAME}: Invalid document or schema`, errorCode);
+};
+
+const _hasColName = (colName) => {
+	if (colName.trim() === '' || colName === null || typeof colName === 'undefined' || colName.length > 255 || colName === null) {
+		throw new lowstorageError(`${MODULE_NAME}: Collection name is required, null or too long`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
+	}
 };
 
 // code / description
@@ -126,12 +133,6 @@ class lowstorage {
 		}
 	};
 
-	_hasColName = (colName) => {
-		if (colName.trim() === '' || colName === null || typeof colName === 'undefined') {
-			throw new lowstorageError(`${MODULE_NAME}: Collection name is required`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
-		}
-	};
-
 	/**
 	 * List all collections.
 	 * @returns {Promise<string[]>} An array of collection names.
@@ -156,13 +157,15 @@ class lowstorage {
 	 */
 	async collectionExists(colName) {
 		try {
-			this._hasColName(colName);
+			_hasColName(colName);
 			const exists = await this._s3.fileExists(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`);
-			return exists;
+			console.log('collectionExists::2 ', `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, exists);
+			return !!exists;
 		} catch (error) {
 			if (error.message.includes('Not Found')) {
 				return false;
 			}
+			console.log('collectionExists::3 ', colName, error);
 			throw new lowstorageError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 		}
 	}
@@ -177,11 +180,16 @@ class lowstorage {
 	 */
 	async createCollection(colName, schema, data = []) {
 		try {
-			this._hasColName(colName);
+			_hasColName(colName);
 			const exists = await this.collectionExists(colName);
 			if (!exists) {
-				await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, data.length > 0 ? data : '');
-				return this.collection(colName, schema);
+				if (data.length > 0 && schema) {
+					const wrapperType = this._avro.parse({ type: 'array', items: schema });
+					await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, wrapperType.toBuffer(data));
+				} else {
+					await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, EMPTY_DATA);
+				}
+				return this.collection(colName, schema, false);
 			}
 			throw new lowstorageError(`${MODULE_NAME}: Collection ${colName} already exists`, lowstorage_ERROR_CODES.COLLECTION_EXISTS);
 		} catch (error) {
@@ -200,7 +208,7 @@ class lowstorage {
 	 */
 	async removeCollection(colName) {
 		try {
-			this._hasColName(colName);
+			_hasColName(colName);
 			const KEY = `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`;
 			const exists = await this.collectionExists(colName);
 			if (exists) {
@@ -228,70 +236,6 @@ class lowstorage {
 	}
 
 	/**
-	 * Rename a collection.
-	 * @param {string} oldColName - The current name of the collection.
-	 * @param {string} newColName - The new name of the collection.
-	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
-	 * @throws {lowstorageError} If there's an error.
-	 */
-	async renameCollection(oldColName, newColName) {
-		try {
-			this._hasColName(oldColName);
-			this._hasColName(newColName);
-			const exists = await this.collectionExists(oldColName);
-			if (!exists) {
-				throw new CollectionNotFoundError(
-					`${MODULE_NAME}: Collection ${oldColName} does not exist`,
-					lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND,
-				);
-			}
-			const oldCol = await this.collection(oldColName);
-			const oldColData = await oldCol._loadData();
-			const success = await this.removeCollection(oldColName);
-			if (!success) {
-				throw new lowstorageError(`${MODULE_NAME}: Failed to rename collection`, lowstorage_ERROR_CODES.RENAME_COLLECTION_ERROR);
-			}
-			return await this.createCollection(newColName, oldCol._avroType, oldColData);
-		} catch (error) {
-			if (error instanceof lowstorageError) {
-				throw error;
-			}
-			throw new lowstorageError(
-				`${MODULE_NAME}: Rename collection failed: ${error.message}`,
-				lowstorage_ERROR_CODES.RENAME_COLLECTION_ERROR,
-			);
-		}
-	}
-
-	// TODO: update collection schema
-	// async updateCollectionSchema(colName, newSchema) {
-	// 	try {
-	// 		this._hasColName(colName);
-	// 		// Check if collection exists
-	// 		const exists = await this.collectionExists(colName);
-	// 		if (!exists) {
-	// 			throw new CollectionNotFoundError(`${MODULE_NAME}: Collection ${colName} does not exist`, lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
-	// 		}
-	// 		if (typeof schema === 'undefined' || schema === null) {
-	// 			throw new lowstorageError(`${MODULE_NAME}: Schema is required`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
-	// 		}
-	// 		const col = this.collection(colName);
-	// 		const colData = await col._loadDataBuffer();
-	// 		const avroType = this._avro.parse(schema);
-	// 		this._schemas.set(colName, avroType);
-
-	// 	} catch (error) {
-	// 		if (error instanceof S3OperationError) {
-	// 			throw error;
-	// 		}
-	// 		throw new lowstorageError(
-	// 			`${MODULE_NAME}: Failed to update collection schema: ${error.message}`,
-	// 			lowstorage_ERROR_CODES.UPDATE_COLLECTION_SCHEMA_ERROR,
-	// 		);
-	// 	}
-	// }
-
-	/**
 	 * Get or create a collection.
 	 * @param {string} colName - The name of the collection.
 	 * @param {Object} [schema] - The schema for the collection.
@@ -301,28 +245,18 @@ class lowstorage {
 	 */
 	async collection(colName, schema, autoCreate = true) {
 		try {
-			this._hasColName(colName);
+			_hasColName(colName);
 			const colPath = `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`;
-			let avroType;
-
 			const exists = await this._s3.fileExists(colPath);
-
 			if (!exists) {
 				if (!autoCreate) {
 					throw new lowstorageError(`${MODULE_NAME}: Collection ${colName} does not exist`, lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 				}
-				const emptyData = Buffer.from('', 'utf8');
-				await this._s3.put(colPath, emptyData);
+				// TODO: check if this is the right way to handle empty data
+				await this._s3.put(colPath, EMPTY_DATA);
 			}
-
-			if (schema) {
-				avroType = this._avro.parse(schema);
-				this._schemas.set(colName, avroType);
-			} else if (this._schemas.has(colName)) {
-				avroType = this._schemas.get(colName);
-			}
-
-			return new Collection(colName, this._s3, avroType, this._dirPrefix);
+			const colSchema = schema || this._schemas.get(colName) || undefined;
+			return new Collection(colName, colSchema, this._s3, this._dirPrefix);
 		} catch (error) {
 			// check if error message contains "unknown type" and if so, throw a schema validation error
 			if (error.message.includes('unknown type')) {
@@ -381,18 +315,19 @@ class Collection {
 	 * Create a new Collection instance.
 	 * @param {string} colName - The name of the collection.
 	 * @param {S3} s3 - The S3 instance.
-	 * @param {Object} [avroType] - The Avro type for the collection.
+	 * @param {Object} [schema] - The Avro schema for the collection.
 	 * @param {string} [dirPrefix=PROJECT_DIR_PREFIX] - The directory prefix for the collection.
 	 * @param {boolean} [safeWrite=false] - Whether to perform a safe write operation. It doublechecks the ETag of the object before writing. False = overwrites the object, True = only writes if the object has not been modified.
 	 * @returns {Collection} A new Collection instance.
 	 */
-	constructor(colName, s3, avroType, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false) {
+	constructor(colName, schema, s3, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false) {
 		this._colName = colName;
 		this._s3 = s3;
 		this._avro = avro;
 		this._lastETag = '';
 		this._dataCache = [];
-		this._avroType = avroType;
+		this._schema = schema;
+		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
 		this._dirPrefix = dirPrefix;
 		this._safeWrite = safeWrite;
 	}
@@ -410,6 +345,7 @@ class Collection {
 		this._colName = props.colName;
 		this._s3 = props.s3;
 		this._avro = props.avro;
+		this._schema = props.schema;
 		this._avroType = props.avroType;
 		this._dirPrefix = props.dirPrefix;
 		this._safeWrite = props.safeWrite;
@@ -428,7 +364,8 @@ class Collection {
 	};
 
 	setAvroSchema = (schema) => {
-		this._avroType = this._avro.parse(schema);
+		this._schema = schema;
+		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
 	};
 
 	async _loadData() {
@@ -488,7 +425,7 @@ class Collection {
 				);
 			}
 			const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
-			const dataBuffer = data.length > 0 ? wrapperType.toBuffer(data) : Buffer.from('', 'utf8');
+			const dataBuffer = data.length > 0 ? wrapperType.toBuffer(data) : EMPTY_DATA; // TODO: check if this is the right way to handle empty data
 
 			const KEY = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
 			if (this._safeWrite && this._lastETag !== '') {
@@ -825,6 +762,30 @@ class Collection {
 			return data.length;
 		} catch (error) {
 			throw new lowstorageError(`${MODULE_NAME}: Count operation failed: ${error.message}`, lowstorage_ERROR_CODES.COUNT_ERROR);
+		}
+	}
+
+	async renameCollection(newColName, newSchema = this._schema) {
+		try {
+			_hasColName(newColName);
+			const exists = await this._s3.fileExists(`${this._dirPrefix}${DEFAULT_DELIMITER}${newColName}${COL_SUFFIX}`);
+			if (!!exists) {
+				throw new lowstorageError(`${MODULE_NAME}: Collection ${newColName} already exists`, lowstorage_ERROR_CODES.COLLECTION_EXISTS);
+			}
+			const schema = newSchema || this.getAvroSchema();
+			const data = await this._loadData();
+			const createNew = new Collection(newColName, schema, this._s3, this._dirPrefix);
+			await createNew._saveData(data);
+			await this._s3.delete(`${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`);
+			return createNew;
+		} catch (error) {
+			if (error instanceof lowstorageError) {
+				throw error;
+			}
+			throw new lowstorageError(
+				`${MODULE_NAME}: Rename collection failed: ${error.message}`,
+				lowstorage_ERROR_CODES.RENAME_COLLECTION_ERROR,
+			);
 		}
 	}
 }
