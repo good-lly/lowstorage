@@ -10,7 +10,7 @@ import {
 	DocumentValidationError,
 	S3OperationError,
 } from './errors.js';
-import { matchesQuery, generateUUID, inferAvroType } from './helpers.js';
+import { matchesQuery, generateUUID, inferAvroType, ensureIdFieldInSchema } from './helpers.js';
 
 const MODULE_NAME = 'lowstorage';
 const DEFAULT_DELIMITER = '/';
@@ -104,6 +104,7 @@ class lowstorage {
 	 * @param {string} [options.region='auto'] - S3 region.
 	 * @param {Object} [options.logger=null] - Logger object.
 	 * @param {string} [options.dirPrefix=PROJECT_DIR_PREFIX] - Directory prefix for collections.
+	 * @param {Number} [options.maxRequestSizeInBytes=CHUNG_5MB] - Chunk size for reading and writing data. AWS S3 has a minimum of 5MB per object.
 	 * @returns {lowstorage} A new lowstorage instance.
 	 */
 	constructor(
@@ -159,13 +160,11 @@ class lowstorage {
 		try {
 			_hasColName(colName);
 			const exists = await this._s3.fileExists(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`);
-			console.log('collectionExists::2 ', `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, exists);
 			return !!exists;
 		} catch (error) {
 			if (error.message.includes('Not Found')) {
 				return false;
 			}
-			console.log('collectionExists::3 ', colName, error);
 			throw new lowstorageError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 		}
 	}
@@ -183,6 +182,19 @@ class lowstorage {
 			_hasColName(colName);
 			const exists = await this.collectionExists(colName);
 			if (!exists) {
+				if (typeof schema !== 'undefined' && schema !== null) {
+					try {
+						const isValid = this._avro.parse(schema);
+						if (!isValid) {
+							throw new SchemaValidationError(
+								`${MODULE_NAME}: Schema is invalid: ${schema}`,
+								lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
+							);
+						}
+					} catch (error) {
+						throw new SchemaValidationError(`${MODULE_NAME}: Schema is invalid: ${schema}`, lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
+					}
+				}
 				if (data.length > 0 && schema) {
 					const wrapperType = this._avro.parse({ type: 'array', items: schema });
 					await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, wrapperType.toBuffer(data));
@@ -209,10 +221,9 @@ class lowstorage {
 	async removeCollection(colName) {
 		try {
 			_hasColName(colName);
-			const KEY = `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`;
 			const exists = await this.collectionExists(colName);
 			if (exists) {
-				await this._s3.delete(KEY);
+				await this._s3.delete(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`);
 				const exists2 = await this.collectionExists(colName);
 				if (typeof exists2 === 'boolean') {
 					if (!exists2) {
@@ -314,41 +325,49 @@ class Collection {
 	/**
 	 * Create a new Collection instance.
 	 * @param {string} colName - The name of the collection.
-	 * @param {S3} s3 - The S3 instance.
 	 * @param {Object} [schema] - The Avro schema for the collection.
+	 * @param {S3} s3 - The S3 instance.
 	 * @param {string} [dirPrefix=PROJECT_DIR_PREFIX] - The directory prefix for the collection.
 	 * @param {boolean} [safeWrite=false] - Whether to perform a safe write operation. It doublechecks the ETag of the object before writing. False = overwrites the object, True = only writes if the object has not been modified.
+	 * @param {Number} [chunkSize=CHUNG_5MB] - The chunk size for reading and writing data. AWS S3 has a maximum of 5MB per object.
 	 * @returns {Collection} A new Collection instance.
 	 */
-	constructor(colName, schema, s3, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false) {
+	constructor(colName, schema, s3, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false, chunkSize = CHUNG_5MB) {
 		this._colName = colName;
+
 		this._s3 = s3;
+		this._schema = ensureIdFieldInSchema(schema);
+		this._dirPrefix = dirPrefix;
+		this._safeWrite = safeWrite;
+		this._chunkSize = chunkSize || CHUNG_5MB;
+		this._key = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
+		this._s3.setMaxRequestSizeInBytes(this._chunkSize);
 		this._avro = avro;
 		this._lastETag = '';
 		this._dataCache = [];
-		this._schema = schema;
 		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
-		this._dirPrefix = dirPrefix;
-		this._safeWrite = safeWrite;
 	}
 
 	getProps = () => ({
 		colName: this._colName,
+		schema: this._schema,
 		s3: this._s3,
 		avro: this._avro,
 		avroType: this._avroType,
 		dirPrefix: this._dirPrefix,
 		safeWrite: this._safeWrite,
+		chunkSize: this._chunkSize,
 	});
 
 	setProps = (props) => {
 		this._colName = props.colName;
+		this._schema = props.schema;
 		this._s3 = props.s3;
 		this._avro = props.avro;
-		this._schema = props.schema;
 		this._avroType = props.avroType;
 		this._dirPrefix = props.dirPrefix;
 		this._safeWrite = props.safeWrite;
+		this._chunkSize = props.chunkSize;
 	};
 
 	setSafeWrite = (safeWrite) => {
@@ -360,47 +379,42 @@ class Collection {
 	};
 
 	getAvroSchema = () => {
-		return this._avroType;
+		return this._schema;
 	};
 
 	setAvroSchema = (schema) => {
-		this._schema = schema;
+		this._schema = ensureIdFieldInSchema(schema);
 		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
 	};
 
 	async _loadData() {
 		try {
-			const KEY = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
-			const CHUNK_SIZE = this._s3.getMaxRequestSizeInBytes() || CHUNG_5MB;
 			if (this._avroType === null || typeof this._avroType === 'undefined') {
 				throw new lowstorageError(
 					`${MODULE_NAME}: Missing type definition. Configure before operations `,
 					lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
 				);
 			}
-			console.log('Getting object:', KEY, this._lastETag);
-			let { etag, data } = await this._s3.getObjectWithETag(KEY, { 'if-none-match': this._lastETag });
-			console.log('data :::::::::::::::::::::::::', data, etag, this._dataCache);
+			const { etag, data } = await this._s3.getObjectWithETag(this._key, { 'if-none-match': this._lastETag });
 			if (data === null) {
-				// console.log('data is null, returning cache');
 				return this._dataCache;
 			}
 			this._lastETag = etag === null ? this._lastETag : etag;
 			const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
-			if (data.length < CHUNK_SIZE) {
-				this._dataCache = data.length > 0 ? wrapperType.fromBuffer(data) : [];
+			if (data.length < this._chunkSize) {
+				this._dataCache = data.length > 0 ? wrapperType.fromBuffer(Buffer.from(data, 'utf8')) : [];
 				return this._dataCache;
 			}
-			let offset = CHUNK_SIZE;
+			let offset = this._chunkSize;
 			let bufferArr = [Buffer.from(data, 'utf8')];
 			let repeat = true;
 			while (repeat) {
-				const nextDataResponse = await this._s3.getResponse(KEY, false, offset, offset + CHUNK_SIZE);
+				const nextDataResponse = await this._s3.getResponse(this._key, false, offset, offset + this._chunkSize);
 				const nextDataBody = await nextDataResponse.text();
 				bufferArr.push(Buffer.from(nextDataBody, 'utf8'));
-				offset += CHUNK_SIZE;
+				offset += this._chunkSize;
 				const contentLength = nextDataResponse.headers.get('content-length') || nextDataBody.length;
-				if (contentLength < CHUNK_SIZE) {
+				if (contentLength < this._chunkSize) {
 					repeat = false;
 				}
 			}
@@ -427,26 +441,23 @@ class Collection {
 			const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
 			const dataBuffer = data.length > 0 ? wrapperType.toBuffer(data) : EMPTY_DATA; // TODO: check if this is the right way to handle empty data
 
-			const KEY = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
 			if (this._safeWrite && this._lastETag !== '') {
-				const currentETag = await this._s3.getEtag(KEY);
+				const currentETag = await this._s3.getEtag(this._key);
 				// If we have a current ETag, check if it matches our last known ETag
 				if (currentETag !== null && currentETag !== this._lastETag) {
 					return false;
 				}
 			}
 
-			const resp = await this._s3.put(KEY, dataBuffer);
+			const resp = await this._s3.put(this._key, dataBuffer);
 			if (resp.status !== 200) {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to save data`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
 
 			// Update the cached ETag
 			const newETag = resp.headers.get('etag');
-			// console.log('saveddata newETag', this._s3.sanitizeETag(newETag));
 			if (newETag) {
 				this._lastETag = this._s3.sanitizeETag(newETag);
-				// console.log('saveddata lastETag', this._lastETag, 'data is ', data);
 				this._dataCache = data;
 			}
 			return true;
@@ -478,7 +489,7 @@ class Collection {
 			}
 			const items = !Array.isArray(doc) ? [doc] : doc;
 
-			const schemaWithId = schema || this._avroType || inferAvroType(items[0]);
+			const schemaWithId = ensureIdFieldInSchema(schema) || this._schema || inferAvroType(items[0]);
 			const avroType = this._avro.parse(schemaWithId);
 			if (!avroType) {
 				throw new SchemaValidationError(
@@ -510,6 +521,7 @@ class Collection {
 			if (!success) {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to insert document`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
+			this.setAvroSchema(schemaWithId);
 			return items;
 		} catch (error) {
 			if (error.message.includes('unknown type')) {
@@ -774,7 +786,7 @@ class Collection {
 			}
 			const schema = newSchema || this.getAvroSchema();
 			const data = await this._loadData();
-			const createNew = new Collection(newColName, schema, this._s3, this._dirPrefix);
+			const createNew = new Collection(newColName, schema, this._s3, this._dirPrefix, this._safeWrite, this._chunkSize);
 			await createNew._saveData(data);
 			await this._s3.delete(`${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`);
 			return createNew;

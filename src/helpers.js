@@ -52,6 +52,9 @@ const ensureIdFieldInSchema = (schema) => {
 		size: 16,
 		logicalType: 'UUID',
 	};
+	if (typeof schema === 'undefined' || schema === null) {
+		return schema;
+	}
 
 	if (schema.type === 'record') {
 		const hasIdField = schema.fields.some((field) => field.name === '_id');
