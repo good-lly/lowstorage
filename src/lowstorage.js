@@ -1,7 +1,7 @@
 'use strict';
 
 import { S3 } from 'ultralight-s3';
-import avro from 'avro-js'; // eslint-disable-line
+import avro from 'avsc'; // eslint-disable-line
 import {
 	lowstorage_ERROR_CODES,
 	lowstorageError,
@@ -334,7 +334,6 @@ class Collection {
 	 */
 	constructor(colName, schema, s3, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false, chunkSize = CHUNG_5MB) {
 		this._colName = colName;
-
 		this._s3 = s3;
 		this._schema = ensureIdFieldInSchema(schema);
 		this._dirPrefix = dirPrefix;

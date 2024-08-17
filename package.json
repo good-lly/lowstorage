@@ -14,8 +14,8 @@
 	},
 	"scripts": {
 		"test": "node --env-file ./.env --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --no-cache",
-		"build": "esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js --external:avro-js",
-		"dev": "esbuild --bundle --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js  --external:avro-js && node --env-file ./.env ./dev/dev-index.js"
+		"build": "esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js --external:avsc",
+		"dev": "esbuild --bundle --platform=node --target=node20 --format=esm --outfile=lib/lowstorage.js src/lowstorage.js  --external:avsc && node --env-file ./.env ./dev/dev-index.js"
 	},
 	"license": "MIT",
 	"author": "Peter Jensen <peter@jensen.wtf>",
@@ -35,7 +35,7 @@
 		"wrangler": "^3.62.0"
 	},
 	"dependencies": {
-		"avro-js": "^1.11.3",
+		"avsc": "^5.7.7",
 		"ultralight-s3": "^0.0.5"
 	},
 	"keywords": [

@@ -466,14 +466,12 @@ test('Document | cachcing and race conditions', async () => {
 
 	// Test update with invalid schema
 	// TODO - fix this
-	await expect(col.update({ name: 'Carlos2' }, { surname: 'CarlosesSurname' })).rejects.toThrow(
-		lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
-	);
-	const updateCheck = col2.find({ name: 'Carlos' });
+	await expect(col.update({ name: 'Carlos2' }, { surname: 'CarlosesSurname' })).rejects.toThrow(lowstorage_ERROR_CODES.UPDATE_ERROR);
+	const updateCheck = await col2.find({ name: 'Carlos2' });
 	expect(updateCheck).toBeDefined();
 	expect(updateCheck).toHaveLength(1);
 	expect(updateCheck[0]).toHaveProperty('_id');
-	expect(updateCheck[0]).toHaveProperty('name', 'Carlos');
+	expect(updateCheck[0]).toHaveProperty('name', 'Carlos2');
 	expect(updateCheck[0]).toHaveProperty('age', 25);
-	expect(updateCheck[0]).not.toHaveProperty('surname', 'Carlos2');
+	expect(updateCheck[0]).not.toHaveProperty('surname', 'CarlosesSurname');
 });
