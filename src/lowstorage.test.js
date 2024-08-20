@@ -1,5 +1,5 @@
 import { env } from 'node:process';
-import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../lib/lowstorage.js';
+import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../build/lowstorage.js';
 
 const configCF = {
 	endpoint: env.CF_ENDPOINT,

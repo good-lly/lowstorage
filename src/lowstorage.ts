@@ -1,66 +1,58 @@
 'use strict';
 
-import { S3 } from 'ultralight-s3';
-import avro from 'avsc'; // eslint-disable-line
-import {
-	lowstorage_ERROR_CODES,
-	lowstorageError,
-	CollectionNotFoundError,
-	SchemaValidationError,
-	DocumentValidationError,
-	S3OperationError,
-} from './errors.js';
-import { matchesQuery, generateUUID, inferAvroType, ensureIdFieldInSchema } from './helpers.js';
-
-const MODULE_NAME = 'lowstorage';
-const DEFAULT_DELIMITER = '/';
-const PROJECT_DIR_PREFIX = 'lowstorage';
-const COL_SUFFIX = '.avro';
-const CHUNG_1MB = 1024 * 1024;
-const CHUNG_5MB = 5 * CHUNG_1MB;
-const EMPTY_DATA = Buffer.from('', 'utf8');
-
-const errorValidationFn = (errorCode = lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR) => {
-	throw new DocumentValidationError(`${MODULE_NAME}: Invalid document or schema`, errorCode);
+type S3Options = {
+	accessKeyId: string;
+	secretAccessKey: string;
+	endpoint: string;
+	bucketName: string;
+	region?: string;
+	logger?: any;
+	dirPrefix?: string;
+	maxRequestSizeInBytes?: number;
 };
 
-const _hasColName = (colName) => {
+type CollectionProps = {
+	colName: string;
+	schema: any;
+	s3: S3;
+	dirPrefix: string;
+	safeWrite: boolean;
+	chunkSize: number;
+	avroParse: any;
+	avroType: any;
+};
+
+type CollectionOptions = {
+	skip?: number;
+	limit?: number;
+};
+
+type UpdateOptions = {
+	upsert?: boolean;
+};
+
+import { S3 } from 'ultralight-s3';
+import { Type as parse } from '@avro/types';
+import { lowstorage_ERROR_CODES, lowstorageError, SchemaValidationError, DocumentValidationError, S3OperationError } from 'errors';
+import { matchesQuery, generateUUID, inferAvroSchema, ensureIdFieldInSchema } from 'helpers';
+
+const MODULE_NAME: string = 'lowstorage';
+const DEFAULT_DELIMITER: string = '/';
+const PROJECT_DIR_PREFIX: string = 'lowstorage';
+const COL_SUFFIX: string = '.avro';
+const CHUNG_1MB: number = 1024 * 1024;
+const CHUNG_5MB: number = 5 * CHUNG_1MB;
+const EMPTY_DATA: Buffer = Buffer.from('', 'utf8');
+
+const errorValidationFn = (errorCode: string = lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR): void => {
+	throw new DocumentValidationError(`${MODULE_NAME}: Invalid document or schema ${errorCode}`);
+};
+
+const _hasColName = (colName: string = ''): void => {
 	if (colName.trim() === '' || colName === null || typeof colName === 'undefined' || colName.length > 255 || colName === null) {
 		throw new lowstorageError(`${MODULE_NAME}: Collection name is required, null or too long`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
 	}
 };
-
-// code / description
-// init of new collection is automatically creating it in the bucket
-// there is optional (opt-in) switch to create new collections in bucket
-// if the schema is not provided, it will create empty buffer and save it
-// if the schema is provided, it will save it in memory and use it for all ops
-// if the schema is updated, it will save it in memory and use it for all ops
-// exposed functions are:
-// listCollections ✅
-// collectionExists ✅
-// createCollection ✅
-// removeCollection ✅
-// renameCollection ✅
-// updateCollectionSchema ❌
-// collection ✅
-// s3 ✅
-
-// Operations over collections are:
-// insert ✅
-// find ✅
-// findOne ✅
-// update ✅
-// updateOne ✅
-// delete ✅
-// count ✅
-
-// Errors:
-// lowstorageError ✅
-// CollectionNotFoundError ✅
-// SchemaValidationError ✅
-// DocumentValidationError ✅
-// S3OperationError ✅
 
 /**
  * lowstorage class for managing collections and performing operations on top of S3-compatible storages.
@@ -107,28 +99,23 @@ class lowstorage {
 	 * @param {Number} [options.maxRequestSizeInBytes=CHUNG_5MB] - Chunk size for reading and writing data. AWS S3 has a minimum of 5MB per object.
 	 * @returns {lowstorage} A new lowstorage instance.
 	 */
-	constructor(
-		options = {
-			accessKeyId: undefined,
-			secretAccessKey: undefined,
-			endpoint: undefined,
-			bucketName: undefined,
-			region: 'auto',
-			logger: null,
-			dirPrefix: PROJECT_DIR_PREFIX,
-		},
-	) {
+	private _schemas: Map<string, any>;
+	private _s3: S3;
+	private _dirPrefix: string;
+	private _avroParse: any;
+
+	constructor(options: S3Options) {
 		this._checkArgs(options);
 		this._schemas = new Map();
 		this._s3 = new S3(options);
 		this._dirPrefix = options.dirPrefix || PROJECT_DIR_PREFIX;
-		this._avro = avro;
+		this._avroParse = parse;
 	}
 
-	_checkArgs = (args) => {
+	_checkArgs = (args: S3Options): void => {
 		const requiredFields = ['accessKeyId', 'secretAccessKey', 'endpoint', 'bucketName'];
 		for (const field of requiredFields) {
-			if (!args[field]) {
+			if (!args[field as keyof S3Options]) {
 				throw new lowstorageError(`${MODULE_NAME}: ${field} is required`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
 			}
 		}
@@ -139,13 +126,16 @@ class lowstorage {
 	 * @returns {Promise<string[]>} An array of collection names.
 	 * @throws {S3OperationError} If there's an error during S3 operation.
 	 */
-	async listCollections() {
+	async listCollections(): Promise<string[]> {
 		try {
 			const listed = await this._s3.list(DEFAULT_DELIMITER, this._dirPrefix);
-			if (typeof listed === 'object' && listed !== null && listed.keyCount === '0') return [];
-			// remove the delimiter from the key
-			return listed.map((entry) => entry.key.slice(this._dirPrefix.length + 1, -COL_SUFFIX.length));
-		} catch (error) {
+			if (Array.isArray(listed)) {
+				return listed.map((entry) => entry.key.slice(this._dirPrefix.length + 1, -COL_SUFFIX.length));
+			} else if (typeof listed === 'object' && listed !== null && 'keyCount' in listed && listed.keyCount === '0') {
+				return [];
+			}
+			return [];
+		} catch (error: any) {
 			throw new S3OperationError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 		}
 	}
@@ -156,12 +146,12 @@ class lowstorage {
 	 * @returns {Promise<boolean>} True if the collection exists, false otherwise.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async collectionExists(colName) {
+	async collectionExists(colName: string = ''): Promise<boolean> {
 		try {
 			_hasColName(colName);
 			const exists = await this._s3.fileExists(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`);
 			return !!exists;
-		} catch (error) {
+		} catch (error: any) {
 			if (error.message.includes('Not Found')) {
 				return false;
 			}
@@ -177,18 +167,17 @@ class lowstorage {
 	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async createCollection(colName, schema, data = []) {
+	async createCollection(colName: string = '', schema?: Object, data: any[] = []): Promise<Collection> {
 		try {
 			_hasColName(colName);
 			const exists = await this.collectionExists(colName);
 			if (!exists) {
 				if (typeof schema !== 'undefined' && schema !== null) {
 					try {
-						const isValid = this._avro.parse(schema);
+						const isValid = this._avroParse.isValid(schema);
 						if (!isValid) {
 							throw new SchemaValidationError(
-								`${MODULE_NAME}: Schema is invalid: ${schema}`,
-								lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
+								`${MODULE_NAME}: Schema is invalid: ${schema} ${lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR}`,
 							);
 						}
 					} catch (error) {
@@ -196,7 +185,7 @@ class lowstorage {
 					}
 				}
 				if (data.length > 0 && schema) {
-					const wrapperType = this._avro.parse({ type: 'array', items: schema });
+					const wrapperType = this._avroParse.forSchema({ type: 'array', items: schema });
 					await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, wrapperType.toBuffer(data));
 				} else {
 					await this._s3.put(`${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`, EMPTY_DATA);
@@ -204,7 +193,7 @@ class lowstorage {
 				return this.collection(colName, schema, false);
 			}
 			throw new lowstorageError(`${MODULE_NAME}: Collection ${colName} already exists`, lowstorage_ERROR_CODES.COLLECTION_EXISTS);
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof lowstorageError) {
 				throw error;
 			}
@@ -218,7 +207,7 @@ class lowstorage {
 	 * @returns {Promise<boolean>} A Promise that resolves to true if the collection is removed, false otherwise.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async removeCollection(colName) {
+	async removeCollection(colName: string = ''): Promise<boolean> {
 		try {
 			_hasColName(colName);
 			const exists = await this.collectionExists(colName);
@@ -235,7 +224,7 @@ class lowstorage {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to delete collection ${colName}`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
 			throw new lowstorageError(`${MODULE_NAME}: Collection ${colName} does not exist`, lowstorage_ERROR_CODES.REMOVE_COLLECTION_ERROR);
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof S3OperationError) {
 				throw error;
 			}
@@ -254,7 +243,7 @@ class lowstorage {
 	 * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async collection(colName, schema, autoCreate = true) {
+	async collection(colName: string = '', schema?: object, autoCreate: boolean = true): Promise<Collection> {
 		try {
 			_hasColName(colName);
 			const colPath = `${this._dirPrefix}${DEFAULT_DELIMITER}${colName}${COL_SUFFIX}`;
@@ -268,7 +257,7 @@ class lowstorage {
 			}
 			const colSchema = schema || this._schemas.get(colName) || undefined;
 			return new Collection(colName, colSchema, this._s3, this._dirPrefix);
-		} catch (error) {
+		} catch (error: any) {
 			// check if error message contains "unknown type" and if so, throw a schema validation error
 			if (error.message.includes('unknown type')) {
 				throw new SchemaValidationError(
@@ -332,58 +321,76 @@ class Collection {
 	 * @param {Number} [chunkSize=CHUNG_5MB] - The chunk size for reading and writing data. AWS S3 has a maximum of 5MB per object.
 	 * @returns {Collection} A new Collection instance.
 	 */
-	constructor(colName, schema, s3, dirPrefix = PROJECT_DIR_PREFIX, safeWrite = false, chunkSize = CHUNG_5MB) {
-		this._colName = colName;
+	private _colName: string;
+	private _schema: Object;
+	private _s3: S3;
+	private _dirPrefix: string;
+	private _safeWrite: boolean;
+	private _chunkSize: number;
+	private _avroParse: any;
+	private _lastETag: string;
+	private _dataCache: any[];
+	private _avroType: any;
+	private _key: string;
+	constructor(
+		colName: string = '',
+		schema: any,
+		s3: S3,
+		dirPrefix: string = PROJECT_DIR_PREFIX,
+		safeWrite: boolean = false,
+		chunkSize: number = CHUNG_5MB,
+	) {
+		this._colName = colName.trim();
 		this._s3 = s3;
 		this._schema = ensureIdFieldInSchema(schema);
 		this._dirPrefix = dirPrefix;
 		this._safeWrite = safeWrite;
 		this._chunkSize = chunkSize || CHUNG_5MB;
-		this._key = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
 		this._s3.setMaxRequestSizeInBytes(this._chunkSize);
-		this._avro = avro;
+		this._avroParse = parse;
 		this._lastETag = '';
 		this._dataCache = [];
-		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
+		this._avroType = typeof schema === 'undefined' ? null : this._avroParse.ForSchema(schema);
+		this._key = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
 	}
 
-	getProps = () => ({
+	getProps = (): CollectionProps => ({
 		colName: this._colName,
-		schema: this._schema,
 		s3: this._s3,
-		avro: this._avro,
+		schema: this._schema,
+		avroParse: this._avroParse,
 		avroType: this._avroType,
 		dirPrefix: this._dirPrefix,
 		safeWrite: this._safeWrite,
 		chunkSize: this._chunkSize,
 	});
 
-	setProps = (props) => {
+	setProps = (props: CollectionProps): void => {
 		this._colName = props.colName;
 		this._schema = props.schema;
 		this._s3 = props.s3;
-		this._avro = props.avro;
+		this._avroParse = props.avroParse;
 		this._avroType = props.avroType;
 		this._dirPrefix = props.dirPrefix;
 		this._safeWrite = props.safeWrite;
 		this._chunkSize = props.chunkSize;
 	};
 
-	setSafeWrite = (safeWrite) => {
+	setSafeWrite = (safeWrite: boolean): void => {
 		this._safeWrite = safeWrite;
 	};
 
-	getSafeWrite = () => {
+	getSafeWrite = (): boolean => {
 		return this._safeWrite;
 	};
 
-	getAvroSchema = () => {
+	getAvroSchema = (): Object => {
 		return this._schema;
 	};
 
-	setAvroSchema = (schema) => {
+	setAvroSchema = (schema: Object): void => {
 		this._schema = ensureIdFieldInSchema(schema);
-		this._avroType = typeof schema === 'undefined' ? null : this._avro.parse(schema);
+		this._avroType = typeof schema === 'undefined' ? null : this._avroParse.forSchema(schema);
 	};
 
 	async _loadData() {
@@ -399,7 +406,7 @@ class Collection {
 				return this._dataCache;
 			}
 			this._lastETag = etag === null ? this._lastETag : etag;
-			const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
+			const wrapperType = this._avroParse.forSchema({ type: 'array', items: this._avroType });
 			if (data.length < this._chunkSize) {
 				this._dataCache = data.length > 0 ? wrapperType.fromBuffer(Buffer.from(data, 'utf8')) : [];
 				return this._dataCache;
@@ -412,7 +419,7 @@ class Collection {
 				const nextDataBody = await nextDataResponse.text();
 				bufferArr.push(Buffer.from(nextDataBody, 'utf8'));
 				offset += this._chunkSize;
-				const contentLength = nextDataResponse.headers.get('content-length') || nextDataBody.length;
+				const contentLength = parseInt(nextDataResponse.headers.get('content-length') || nextDataBody.length.toString());
 				if (contentLength < this._chunkSize) {
 					repeat = false;
 				}
@@ -420,7 +427,7 @@ class Collection {
 			const bufferedData = Buffer.concat(bufferArr);
 			this._dataCache = wrapperType.fromBuffer(bufferedData);
 			return this._dataCache;
-		} catch (error) {
+		} catch (error: any) {
 			if (error.toString().indexOf('status 404: Unknown - Not Found') > -1) {
 				this._dataCache = [];
 				return this._dataCache;
@@ -429,7 +436,7 @@ class Collection {
 		}
 	}
 
-	async _saveData(data) {
+	async _saveData(data: Object[]): Promise<boolean> {
 		try {
 			if (this._avroType === null || typeof this._avroType === 'undefined') {
 				throw new lowstorageError(
@@ -437,7 +444,7 @@ class Collection {
 					lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
 				);
 			}
-			const wrapperType = this._avro.parse({ type: 'array', items: this._avroType });
+			const wrapperType = this._avroParse.forSchema({ type: 'array', items: this._avroType });
 			const dataBuffer = data.length > 0 ? wrapperType.toBuffer(data) : EMPTY_DATA; // TODO: check if this is the right way to handle empty data
 
 			if (this._safeWrite && this._lastETag !== '') {
@@ -449,18 +456,18 @@ class Collection {
 			}
 
 			const resp = await this._s3.put(this._key, dataBuffer);
-			if (resp.status !== 200) {
+			if (typeof resp === 'object' && 'status' in resp && resp.status !== 200) {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to save data`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
 
 			// Update the cached ETag
-			const newETag = resp.headers.get('etag');
-			if (newETag) {
+			const newETag = (resp as any).headers?.get('etag') || '';
+			if (newETag && newETag.length > 0) {
 				this._lastETag = this._s3.sanitizeETag(newETag);
 				this._dataCache = data;
 			}
 			return true;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof S3OperationError) {
 				throw error;
 			}
@@ -475,7 +482,7 @@ class Collection {
 	 * @returns {Promise<Array>} A Promise that resolves to the array of inserted document(s).
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async insert(doc, schema = undefined) {
+	async insert(doc: Object | Array<Object>, schema?: Object): Promise<Object[]> {
 		try {
 			if (doc === undefined || doc === null) {
 				throw new lowstorageError(`${MODULE_NAME}: Document is required for insert`, lowstorage_ERROR_CODES.INSERT_ERROR);
@@ -488,8 +495,8 @@ class Collection {
 			}
 			const items = !Array.isArray(doc) ? [doc] : doc;
 
-			const schemaWithId = ensureIdFieldInSchema(schema) || this._schema || inferAvroType(items[0]);
-			const avroType = this._avro.parse(schemaWithId);
+			const schemaWithId = schema ? ensureIdFieldInSchema(schema) : this._schema || ensureIdFieldInSchema(inferAvroSchema(items[0]));
+			const avroType = this._avroParse.forSchema(schemaWithId);
 			if (!avroType) {
 				throw new SchemaValidationError(
 					`${MODULE_NAME}: Schema is required - Pass a schema to the insert method`,
@@ -522,7 +529,7 @@ class Collection {
 			}
 			this.setAvroSchema(schemaWithId);
 			return items;
-		} catch (error) {
+		} catch (error: any) {
 			if (error.message.includes('unknown type')) {
 				throw new SchemaValidationError(
 					`${MODULE_NAME}: Schema input is invalid: ${error.message}`,
@@ -545,17 +552,20 @@ class Collection {
 	 * @returns {Promise<Array>} A Promise that resolves to an array of matching documents.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async find(query = {}, options = {}) {
+	async find(query: Object = {}, options: Object = {}): Promise<Object[]> {
 		try {
 			if (query === undefined || query === null) {
 				throw new lowstorageError(`${MODULE_NAME}: Query is required for update`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
 			}
 			const data = await this._loadData();
-			const start = parseInt(options.skip, 10) || 0;
-			const end = parseInt(options.limit, 10) ? start + parseInt(options.limit, 10) : undefined;
+			const start = (options as { skip?: number }).skip !== undefined ? parseInt(String((options as { skip?: number }).skip), 10) : 0;
+			const end =
+				(options as { limit?: number }).limit !== undefined
+					? start + parseInt(String((options as { limit?: number }).limit), 10)
+					: undefined;
 			const filteredData = data.filter((doc) => matchesQuery(doc, query)).slice(start, end);
 			return filteredData;
-		} catch (error) {
+		} catch (error: any) {
 			throw new lowstorageError(`${MODULE_NAME}: Find operation failed: ${error.message}`, lowstorage_ERROR_CODES.FIND_ERROR);
 		}
 	}
@@ -566,14 +576,14 @@ class Collection {
 	 * @returns {Promise<Object|null>} A Promise that resolves to the first matching document or null if no match is found.
 	 * @throws {lowstorageError} If there's an error.
 	 */
-	async findOne(query = {}) {
+	async findOne(query: Object = {}): Promise<Object | null> {
 		try {
 			if (query === null) {
 				throw new lowstorageError(`${MODULE_NAME}: Query cannot be null`, lowstorage_ERROR_CODES.INVALID_ARGUMENT);
 			}
 			const result = await this.find(query, { limit: 1 });
 			return result[0] || null;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof lowstorageError) {
 				throw error;
 			}
@@ -591,7 +601,7 @@ class Collection {
 	 * @throws {DocumentValidationError} If the updated document is invalid.
 	 * @throws {S3OperationError} If the S3 operation fails.
 	 */
-	async update(query = {}, update = {}, options = {}) {
+	async update(query: Object = {}, update: Object = {}, options: Object = {}): Promise<number> {
 		try {
 			if (query === undefined || query === null || update === undefined || update === null) {
 				throw new lowstorageError(
@@ -632,7 +642,7 @@ class Collection {
 				if (!success) {
 					throw new S3OperationError(`${MODULE_NAME}: Failed to update document`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 				}
-			} else if (options.upsert) {
+			} else if (options && 'upsert' in options && options.upsert) {
 				// If upsert is true, we need to insert the document
 				const success = await this.insert(update);
 				if (!success) {
@@ -641,7 +651,7 @@ class Collection {
 				updatedCount = 1;
 			}
 			return updatedCount;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof S3OperationError) {
 				throw error;
 			}
@@ -691,7 +701,7 @@ class Collection {
 					throw new DocumentValidationError(`${MODULE_NAME}: Invalid document or schema`, lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR);
 				}
 			}
-			if (options.upsert) {
+			if (options && 'upsert' in options && options.upsert) {
 				// If upsert is true, we need to insert the document
 				const success = await this.insert(update);
 				if (!success) {
@@ -700,7 +710,7 @@ class Collection {
 				return 1;
 			}
 			return 0;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof lowstorageError) {
 				throw error;
 			}
@@ -715,7 +725,7 @@ class Collection {
 	 * @throws {lowstorageError} If the delete operation fails.
 	 * @throws {S3OperationError} If the S3 operation fails.
 	 */
-	async delete(query = {}) {
+	async delete(query: Object = {}): Promise<number> {
 		try {
 			if (query === undefined || query === null) {
 				throw new lowstorageError(`${MODULE_NAME}: Query is required`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);
@@ -730,7 +740,7 @@ class Collection {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to delete document`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
 			return initialLength - newData.length;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof S3OperationError) {
 				throw error;
 			}
@@ -744,7 +754,7 @@ class Collection {
 	 * @throws {lowstorageError} If the delete operation fails.
 	 * @throws {S3OperationError} If the S3 operation fails.
 	 */
-	async deleteAll() {
+	async deleteAll(): Promise<number> {
 		try {
 			const data = await this._loadData();
 			const initialLength = data.length;
@@ -753,7 +763,7 @@ class Collection {
 				throw new S3OperationError(`${MODULE_NAME}: Failed to delete document`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
 			}
 			return initialLength;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof S3OperationError) {
 				throw error;
 			}
@@ -767,16 +777,16 @@ class Collection {
 	 * @returns {Promise<number>} A Promise that resolves to the number of documents in the collection.
 	 * @throws {lowstorageError} If the count operation fails.
 	 */
-	async count(query = {}) {
+	async count(query: Object = {}): Promise<number> {
 		try {
 			const data = await this.find(query);
 			return data.length;
-		} catch (error) {
+		} catch (error: any) {
 			throw new lowstorageError(`${MODULE_NAME}: Count operation failed: ${error.message}`, lowstorage_ERROR_CODES.COUNT_ERROR);
 		}
 	}
 
-	async renameCollection(newColName, newSchema = this._schema) {
+	async renameCollection(newColName: string, newSchema: Object = this._schema): Promise<Collection> {
 		try {
 			_hasColName(newColName);
 			const exists = await this._s3.fileExists(`${this._dirPrefix}${DEFAULT_DELIMITER}${newColName}${COL_SUFFIX}`);
@@ -789,7 +799,7 @@ class Collection {
 			await createNew._saveData(data);
 			await this._s3.delete(`${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`);
 			return createNew;
-		} catch (error) {
+		} catch (error: any) {
 			if (error instanceof lowstorageError) {
 				throw error;
 			}
