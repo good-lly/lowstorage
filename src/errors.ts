@@ -36,21 +36,18 @@ class lowstorageError extends Error {
 
 class CollectionNotFoundError extends lowstorageError {
 	constructor(collectionName: any, code: errorCode = lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND) {
-		super(`Collection ${collectionName} not found`, code);
 		super(`Collection ${collectionName} not found`, lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 	}
 }
 
 class SchemaValidationError extends lowstorageError {
 	constructor(message: string, code: errorCode = lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR) {
-		super(message, code);
 		super(message, lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
 	}
 }
 
 class DocumentValidationError extends lowstorageError {
 	constructor(message: string, code: errorCode = lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR) {
-		super(message, code);
 		super(message, lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR);
 	}
 }

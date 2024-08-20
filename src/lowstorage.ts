@@ -22,19 +22,19 @@ type CollectionProps = {
 	avroType: any;
 };
 
-type CollectionOptions = {
-	skip?: number;
-	limit?: number;
-};
+// type CollectionOptions = {
+// 	skip?: number;
+// 	limit?: number;
+// };
 
-type UpdateOptions = {
-	upsert?: boolean;
-};
+// type UpdateOptions = {
+// 	upsert?: boolean;
+// };
 
 import { S3 } from 'ultralight-s3';
-import { Type as parse } from '@avro/types';
+import { Type as parse } from 'avsc';
 import { lowstorage_ERROR_CODES, lowstorageError, SchemaValidationError, DocumentValidationError, S3OperationError } from 'errors';
-import { matchesQuery, generateUUID, inferAvroSchema, ensureIdFieldInSchema } from 'helpers';
+import { matchesQuery, generateUUID, ensureIdFieldInSchema } from 'helpers';
 
 const MODULE_NAME: string = 'lowstorage';
 const DEFAULT_DELIMITER: string = '/';
@@ -174,8 +174,8 @@ class lowstorage {
 			if (!exists) {
 				if (typeof schema !== 'undefined' && schema !== null) {
 					try {
-						const isValid = this._avroParse.isValid(schema);
-						if (!isValid) {
+						const type = this._avroParse.forSchema(schema);
+						if (!type) {
 							throw new SchemaValidationError(
 								`${MODULE_NAME}: Schema is invalid: ${schema} ${lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR}`,
 							);
@@ -350,7 +350,7 @@ class Collection {
 		this._avroParse = parse;
 		this._lastETag = '';
 		this._dataCache = [];
-		this._avroType = typeof schema === 'undefined' ? null : this._avroParse.ForSchema(schema);
+		this._avroType = typeof schema === 'undefined' ? null : this._avroParse.forSchema(schema);
 		this._key = `${this._dirPrefix}${DEFAULT_DELIMITER}${this._colName}${COL_SUFFIX}`;
 	}
 
@@ -389,8 +389,21 @@ class Collection {
 	};
 
 	setAvroSchema = (schema: Object): void => {
-		this._schema = ensureIdFieldInSchema(schema);
-		this._avroType = typeof schema === 'undefined' ? null : this._avroParse.forSchema(schema);
+		try {
+			this._schema = ensureIdFieldInSchema(schema);
+			this._avroType = typeof schema === 'undefined' ? null : this._avroParse.forSchema(schema);
+		} catch (error: any) {
+			throw new lowstorageError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
+		}
+	};
+
+	inferAvroSchema = (data: any[] | { [s: string]: unknown } | ArrayLike<unknown>, type = 'record') => {
+		if (Array.isArray(data)) {
+			data = data[0];
+		}
+		const inferedType = this._avroParse.forValue(data);
+		const schema = inferedType.schema();
+		return ensureIdFieldInSchema(schema);
 	};
 
 	async _loadData() {
@@ -495,7 +508,7 @@ class Collection {
 			}
 			const items = !Array.isArray(doc) ? [doc] : doc;
 
-			const schemaWithId = schema ? ensureIdFieldInSchema(schema) : this._schema || ensureIdFieldInSchema(inferAvroSchema(items[0]));
+			const schemaWithId = schema ? ensureIdFieldInSchema(schema) : this._schema || this.inferAvroSchema(items[0]);
 			const avroType = this._avroParse.forSchema(schemaWithId);
 			if (!avroType) {
 				throw new SchemaValidationError(
@@ -664,12 +677,14 @@ class Collection {
 	 * @param {Object} [query={}] - The query to filter the document to update.
 	 * @param {Object} [update={}] - The update operations to apply to the matching document.
 	 * @returns {Promise<number>} A Promise that resolves to 1 if a document was updated, 0 otherwise.
+	 /**
+	 * Update a single document in the collection that matches the query.
 	 * @throws {lowstorageError} If the updateOne operation fails.
 	 * @throws {SchemaValidationError} If the schema is not defined for the collection.
 	 * @throws {DocumentValidationError} If the updated document is invalid.
 	 * @throws {S3OperationError} If the S3 operation fails.
 	 */
-	async updateOne(query = {}, update = {}, options = {}) {
+	async updateOne(query: Record<string, any> = {}, update: Record<string, any> = {}, options: Record<string, any> = {}): Promise<number> {
 		try {
 			if (query === undefined || query === null || update === undefined || update === null) {
 				throw new lowstorageError(`${MODULE_NAME}: Query is required`, lowstorage_ERROR_CODES.MISSING_ARGUMENT);

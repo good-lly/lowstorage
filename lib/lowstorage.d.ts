@@ -175,6 +175,9 @@ declare class Collection {
     getSafeWrite: () => boolean;
     getAvroSchema: () => Object;
     setAvroSchema: (schema: Object) => void;
+    inferAvroSchema: (data: any[] | {
+        [s: string]: unknown;
+    } | ArrayLike<unknown>, type?: string) => Object;
     _loadData(): Promise<any[]>;
     _saveData(data: Object[]): Promise<boolean>;
     /**
@@ -218,12 +221,14 @@ declare class Collection {
      * @param {Object} [query={}] - The query to filter the document to update.
      * @param {Object} [update={}] - The update operations to apply to the matching document.
      * @returns {Promise<number>} A Promise that resolves to 1 if a document was updated, 0 otherwise.
+     /**
+     * Update a single document in the collection that matches the query.
      * @throws {lowstorageError} If the updateOne operation fails.
      * @throws {SchemaValidationError} If the schema is not defined for the collection.
      * @throws {DocumentValidationError} If the updated document is invalid.
      * @throws {S3OperationError} If the S3 operation fails.
      */
-    updateOne(query?: {}, update?: {}, options?: {}): Promise<0 | 1>;
+    updateOne(query?: Record<string, any>, update?: Record<string, any>, options?: Record<string, any>): Promise<number>;
     /**
      * Delete documents from the collection.
      * @param {Object} [query={}] - The query to filter documents to delete.

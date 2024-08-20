@@ -175,7 +175,7 @@ test('Collections | create via constructor', async () => {
 test('Collections | error cases and error codes', async () => {
 	// Test create collection error
 	await expect(lStorage.createCollection()).rejects.toThrow(lowstorageError);
-	await expect(lStorage.createCollection()).rejects.toThrow(lowstorage_ERROR_CODES.CREATE_COLLECTION_ERROR);
+	await expect(lStorage.createCollection()).rejects.toThrow(lowstorage_ERROR_CODES.MISSING_ARGUMENT);
 
 	// Test collection already exists error
 	const testCol = await lStorage.createCollection('testCol', testColSchema);
