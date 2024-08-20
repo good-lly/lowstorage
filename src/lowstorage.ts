@@ -179,6 +179,8 @@ class lowstorage {
 							throw new SchemaValidationError(
 								`${MODULE_NAME}: Schema is invalid: ${schema} ${lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR}`,
 							);
+						} else {
+							this._schemas.set(colName, schema);
 						}
 					} catch (error) {
 						throw new SchemaValidationError(`${MODULE_NAME}: Schema is invalid: ${schema}`, lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
@@ -281,9 +283,8 @@ class lowstorage {
 
 /**
  * Collection class for managing documents in a collection.
- * @class
- * @example
- * const storage = new lowstorage({
+ * @class Collection
+ * @example const storage = new lowstorage({
  * 	accessKeyId: 'YOUR_ACCESS_KEY',
  * 	secretAccessKey: 'YOUR_SECRET_KEY',
  * 	endpoint: 'YOUR_ENDPOINT',
@@ -304,11 +305,6 @@ class lowstorage {
  * // Show all users
  * const allUsers = await userCol.find({});
  *
- * // Find users with pagination (e.g., page 2, 10 users per page)
- * const secondPageUsers = await userCol.find({}, { skip: 10, limit: 10 });
- *
- * // Find user by ID and update name
- * await userCol.update({ _id: id }, { name: 'Carlos' });
  */
 class Collection {
 	/**

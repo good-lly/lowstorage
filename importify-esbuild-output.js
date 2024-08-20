@@ -1,3 +1,4 @@
+// hack way to get rid of dynamic imports/requires errors by esbuild
 import { readFileSync } from 'fs';
 var arg = process.argv[2];
 var data = !arg || arg == '-' ? readFileSync(0, 'utf-8') : readFileSync(arg, 'utf-8');

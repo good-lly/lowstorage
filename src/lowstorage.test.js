@@ -1,5 +1,5 @@
 import { env } from 'node:process';
-import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../build/lowstorage.js';
+import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../build/lowstorage.min.js';
 
 const configCF = {
 	endpoint: env.CF_ENDPOINT,
@@ -13,9 +13,7 @@ console.log('🏃 Running tests...', configCF);
 
 const configMinio = {
 	endPoint: env.MINIO_ENDPOINT,
-	port: env.MINIO_PORT,
 	region: env.MINIO_REGION,
-	useSSL: env.MINIO_USE_SSL,
 	accessKey: env.MINIO_ACCESS_KEY,
 	secretKey: env.MINIO_SECRET_KEY,
 	bucketName: env.MINIO_BUCKET_NAME,

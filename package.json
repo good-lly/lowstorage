@@ -2,8 +2,16 @@
 	"name": "lowstorage",
 	"version": "2.0.0",
 	"description": "Simple, micro-dependency, pseudo-database using Apache Avro serialization on S3-compatible storages, inspired by lowdb.",
-	"main": "lib/lowstorage.js",
 	"type": "module",
+	"main": "./build/lowstorage.min.js",
+	"module": "./build/lowstorage.min.js",
+	"types": "./lib/lowstorage.d.ts",
+	"files": [
+		"build",
+		"lib",
+		"LICENSE",
+		"README.md"
+	],
 	"homepage": "https://github.com/good-lly/lowstorage#README.md",
 	"bugs": {
 		"url": "https://github.com/good-lly/lowstorage/issues"
@@ -12,9 +20,19 @@
 		"type": "git",
 		"url": "git+https://github.com/good-lly/lowstorage.git"
 	},
+	"exports": {
+		".": {
+			"import": "./build/lowstorage.min.js",
+			"types": "./lib/lowstorage.d.ts",
+			"default": "./build/lowstorage.min.js"
+		}
+	},
 	"scripts": {
+		"prepublishOnly": "npm run clear && npm run prettier:fix && npm run build && npm run test",
+		"prettier:fix": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
 		"test": "node --env-file ./.env --experimental-vm-modules node_modules/jest/bin/jest.js --config=jest.config.json --no-cache",
-		"build": "tsc && esbuild --bundle --platform=node --target=node20 --format=esm ./src/lowstorage.js | node importify-esbuild-output.js | esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=build/lowstorage.js"
+		"build": "tsc && esbuild --bundle --platform=node --target=node20 --format=esm ./src/lowstorage.js | node importify-esbuild-output.js | esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=build/lowstorage.min.js",
+		"clear": "rm -rf build && rm -rf lib"
 	},
 	"license": "MIT",
 	"author": "Peter Jensen <peter@jensen.wtf>",
