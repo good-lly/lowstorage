@@ -169,9 +169,11 @@ declare class Collection {
     getSafeWrite: () => boolean;
     getAvroSchema: () => Object;
     setAvroSchema: (schema: Object) => void;
+    getCollectionETag: () => string;
     inferAvroSchema: (data: any[] | {
         [s: string]: unknown;
     } | ArrayLike<unknown>, type?: string) => Object;
+    forceLoadData(): Promise<boolean>;
     _loadData(): Promise<any[]>;
     _saveData(data: Object[]): Promise<boolean>;
     /**

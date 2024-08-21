@@ -18,27 +18,33 @@
 
 ## Features
 
-- **🚀 Lightweight** ~129kb minified
-- **🔧 Minimalist** - only two dependencies wrapped in a single package
+- **🚀 Lightweight** under ~129kb minified
+- **🔧 Minimalist** - only [t](https://github.com/sentienhq/ultralight-s3)w[o](https://github.com/mtth/avsc) (zero-dependency) dependencies wrapped in a single package
 - **💾 Familiar API** - similar to object databases like MongoDB
-- **📦 BYOS3 / S3-compatibility** - "Bring-Your-Own-S3" like Cloudflare R2, Minio, Ceph, DigitalOcean Spaces, Google Cloud Storage, etc.
-- **🔁 Schema validation & serialization** - Avro schema support
+- **📦 BYOS3 / S3-compatibility** - "Bring-Your-Own-S3" like
+  [Garage](https://garagehq.deuxfleurs.fr/), [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/), [Minio](https://github.com/minio/minio), [Ceph](https://ceph.io/), [DigitalOcean Spaces](https://www.digitalocean.com/products/spaces/), [Google Cloud Storage](https://cloud.google.com/storage/), etc.
+- **🔁 Schema validation & serialization** - [Avro schema](https://avro.apache.org/docs/1.11.1/specification/) support ([fast and compact](https://github.com/mtth/avsc/wiki/Benchmarks) serialization with much smaller encodings)
 - **💻 Typed** - Written in TypeScript
 
 ## Sponsors
 
-[Become a sponsor and have your company logo here](https://github.com/sponsors/good-lly) 👉 [GitHub Sponsors](https://github.com/sponsors/good-lly)
+<p align="center">
+<a href="https://sentienhq.com" target="_blank"><img src="./sponsors/sentien-logo.png" alt="Sponsored by Sentien" width="200" /></a>
 
-#### Version 2 - Breaking Changes
+<a href="https://github.com/sponsors/good-lly" target="_blank"><img src="https://img.shields.io/badge/Become%20a%20sponsor-blue?style=for-the-badge&logo=github&logoColor=white" alt="Become a sponsor" /></a>
+
+</p>
+
+### Version 2 - Breaking Changes
 
 Since version 2.0.0, `lowstorage` has undergone significant changes:
 
-- **Support for Multiple Storages / constructor changes**: The constructor now accepts any S3-compatible configuration instead of being tied to Cloudflare R2. Like AWS S3, Cloudflare R2, Minio, Ceph, DigitalOcean Spaces, Google Cloud Storage, etc. (see [S3-compatible storages](#s3-compatible-storages)) instead of using AWS-SDK it utilize S3 via the zero-dependency [`ultralight-s3`](https://github.com/good-lly/ultralight-s3) package.
+- **Support for S3 Storages / constructor changes**: The constructor now accepts any S3-compatible configuration instead of being tied to Cloudflare R2. Like AWS S3, Cloudflare R2, Minio, Ceph, DigitalOcean Spaces, Google Cloud Storage, etc. (see [S3-compatible storages](#s3-compatible-storages)) instead of using AWS-SDK it utilize S3 via the zero-dependency [`ultralight-s3`](https://github.com/good-lly/ultralight-s3) package.
 - **Avro Schemas**: The constructor now accepts Avro schemas for each collection. This allows more flexibility in defining schemas and validation. If no schema is provided, it will automatically infer the schema from the data. Check out [Avro schema](https://avro.apache.org/docs/current/spec.html) documentation for more details.
 
 If you are migrating from version 1.x.x, please review the new constructor parameters and usage examples below.
 
-### Cloudflare R2 vs. S3 API Compatibility
+#### Cloudflare R2 vs. S3 API Compatibility
 
 R2 uses the S3 API to allow users and their applications to migrate with ease. When comparing to AWS S3, Cloudflare has removed some API operations’ features and added others. The S3 API operations are listed below with their current implementation status. Feature implementation is currently in progress. Refer back to this page for updates. The API is available via the `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint. Find your account ID in the Cloudflare dashboard.
 
@@ -70,7 +76,9 @@ R2 uses the S3 API to allow users and their applications to migrate with ease. W
     - [getSafeWrite(): boolean](#getsafewrite)
     - [getAvroSchema(): Object](#getavroschema)
     - [setAvroSchema(schema: Object): void](#setavroschemaschema)
+    - [getCollectionETag(): string](#getcollectionetag)
     - [inferAvroSchema(data: Object | Array\<Object\>): Object](#inferavroschem)
+    - [forceLoadData(): Promise\<boolean\>](#forceloaddata)
     - [insert(doc: Object | Array\<Object\>, schema?: Object): Promise\<Object[]\>](#insert)
     - [find(query: Object, options: Object): Promise\<Object[]\>](#find)
     - [findOne(query: Object): Promise\<Object | null\>](#findone)
@@ -91,11 +99,11 @@ R2 uses the S3 API to allow users and their applications to migrate with ease. W
 
   - [Error codes](#error-codes)
 
-  - [Important Notice](##important-notice)
+- [Important Notice](##important-notice)
 
-  - [Contributing](##contributing)
+- [Contributing](##contributing)
 
-  - [License](##license)
+- [License](##license)
 
 ### Usage & Examples
 
@@ -107,11 +115,11 @@ const storage = new lowstorage({
 	secretAccessKey: 'YOUR_SECRET_KEY',
 	endpoint: 'YOUR_ENDPOINT',
 	bucketName: 'YOUR_BUCKET_NAME',
-	region: 'YOUR_REGION',
+	region: 'YOUR_REGION', // fallback to auto
 	// optional params from here
-	logger: console, // logger object for your tough times
-	dirPrefix: 'lowstorage', // folder name prefix for collections
-	maxRequestSizeInBytes: 50 * 1024 * 1024, // request size in bytes for S3 operations (default: 5MB)
+	logger?: console, // logger object for your tough times
+	dirPrefix?: 'lowstorage', // folder name prefix for collections
+	maxRequestSizeInBytes?: 50 * 1024 * 1024, // request size in bytes for S3 operations (default: 5MB)
 });
 
 // example user schema
@@ -170,7 +178,10 @@ await userCol.removeCollection();
 // List all collections
 const listCollections = await storage.listCollections();
 
-// check the API section for more details or `/examples` folder for more examples
+// Get S3 instance and perform S3 operations (get, put, delete, etc.) Read more about ultralight-s3 here: https://github.com/sentienhq/ultralight-s3
+const s3ops = await storage.s3();
+
+// check the API section for more details or /examples and /dev folder for more samples
 ```
 
 ### Installation
@@ -188,6 +199,8 @@ pnpm add lowstorage
 To set up and bind your storage, configure your storage client with the appropriate credentials and bucket information. Here is an example setup for AWS S3:
 
 ```js
+import { lowstorage, lowstorage_ERROR_CODES } from 'lowstorage';
+
 const storage = new lowstorage({
 	endPoint: 's3.amazonaws.com',
 	region: 'YOUR-REGION',
@@ -343,12 +356,24 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: A void.
 - **Throws**: A lowstorageError if there's an error.
 
+#### getCollectionETag(): string
+
+- **Behavior**: Returns the ETag of the collection.
+- **Returns**: A string representing the ETag of the collection.
+- **Throws**: A lowstorageError if there's an error.
+
 #### inferAvroSchema(data: Object | Array\<Object\>): Object
 
 - **Behavior**: Infers the Avro schema from the given data.
 - **Input**: An object or an array of objects representing the data to infer the schema from.
   - `data`: An object or an array of objects representing the data to infer the schema from.
 - **Returns**: An object representing the inferred Avro schema.
+- **Throws**: A lowstorageError if there's an error.
+
+#### forceLoadData(): Promise\<boolean\>
+
+- **Behavior**: Forces the collection to load its data from S3.
+- **Returns**: A promise that resolves to a boolean indicating whether the data was loaded successfully.
 - **Throws**: A lowstorageError if there's an error.
 
 #### insert(doc: Object | Array\<Object\>, schema?: Object): Promise\<Object[]\>

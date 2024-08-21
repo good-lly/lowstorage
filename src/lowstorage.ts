@@ -393,6 +393,10 @@ class Collection {
 		}
 	};
 
+	getCollectionETag = (): string => {
+		return this._lastETag;
+	};
+
 	inferAvroSchema = (data: any[] | { [s: string]: unknown } | ArrayLike<unknown>, type = 'record') => {
 		if (Array.isArray(data)) {
 			data = data[0];
@@ -401,6 +405,17 @@ class Collection {
 		const schema = inferedType.schema();
 		return ensureIdFieldInSchema(schema);
 	};
+
+	async forceLoadData(): Promise<boolean> {
+		try {
+			this._lastETag = '';
+			const data = await this._loadData();
+			this._dataCache = data;
+			return true;
+		} catch (error: any) {
+			throw new lowstorageError(`${MODULE_NAME}: Failed to force update data: ${error.message}`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
+		}
+	}
 
 	async _loadData() {
 		try {

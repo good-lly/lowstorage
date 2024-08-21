@@ -283,6 +283,11 @@ test('Document | CRUD operations', async () => {
 	expect(findData[0]).toHaveProperty('name', 'Carlos');
 	expect(findData[0]).toHaveProperty('age', 25);
 
+	// Test get collection etag
+	const etag = col.getCollectionETag();
+	expect(etag).toBeDefined();
+	expect(etag).not.toBe('');
+
 	// Test insert with schema
 	const insertDataWithSchema = await col.insert({ name: 'Carlos', age: 25 }, userAvroSchema);
 	expect(insertDataWithSchema).toBeDefined();
@@ -290,6 +295,12 @@ test('Document | CRUD operations', async () => {
 	expect(insertDataWithSchema[0]).toHaveProperty('_id');
 	expect(insertDataWithSchema[0]).toHaveProperty('name', 'Carlos');
 	expect(insertDataWithSchema[0]).toHaveProperty('age', 25);
+
+	// Test get collection etag
+	const etag2 = col.getCollectionETag();
+	expect(etag2).toBeDefined();
+	expect(etag2).not.toBe('');
+	expect(etag2).not.toBe(etag);
 
 	// Test by find
 	const findDataWithSchema = await col.find({ name: 'Carlos' });
@@ -367,6 +378,25 @@ test('Document | CRUD operations', async () => {
 	expect(updateData).toBeDefined();
 	expect(updateData).toBe(4);
 	expect(updateData).toEqual(4);
+
+	// Get collection etag
+	const etag3 = col.getCollectionETag();
+	expect(etag3).toBeDefined();
+	expect(etag3).not.toBe('');
+	expect(etag3).not.toBe(etag2);
+
+	// Test upsert
+	const updateData2 = await col.update({ name: 'Kim' }, { name: 'Kimono', age: 30 }, { upsert: true });
+	expect(updateData2).toBeDefined();
+	expect(updateData2).toBe(1);
+	expect(updateData2).toEqual(1);
+
+	const findKimono = await col.find({ name: 'Kimono' });
+	expect(findKimono).toBeDefined();
+	expect(findKimono).toHaveLength(1);
+	expect(findKimono[0]).toHaveProperty('_id');
+	expect(findKimono[0]).toHaveProperty('name', 'Kimono');
+	expect(findKimono[0]).toHaveProperty('age', 30);
 
 	// Test update with invalid array
 	await expect(col.update(null, { name: 'Carlos2' })).rejects.toThrow(lowstorage_ERROR_CODES.UPDATE_ERROR);
@@ -463,7 +493,6 @@ test('Document | cachcing and race conditions', async () => {
 	expect(checkBob[0]).toHaveProperty('age', 30);
 
 	// Test update with invalid schema
-	// TODO - fix this
 	await expect(col.update({ name: 'Carlos2' }, { surname: 'CarlosesSurname' })).rejects.toThrow(lowstorage_ERROR_CODES.UPDATE_ERROR);
 	const updateCheck = await col2.find({ name: 'Carlos2' });
 	expect(updateCheck).toBeDefined();
