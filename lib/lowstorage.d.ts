@@ -72,6 +72,18 @@ declare class lowstorage {
     constructor(options: S3Options);
     _checkArgs: (args: S3Options) => void;
     /**
+     * Check if a bucket exists.
+     * @returns {Promise<boolean>} True if the bucket exists, false otherwise.
+     * @throws {lowstorageError} If there's an error.
+     */
+    checkIfStorageExists(): Promise<boolean>;
+    /**
+     * Create a new storage bucket if it doesn't exist.
+     * @returns {Promise<boolean>} A Promise that resolves to true if the bucket was created or already exists, false otherwise.
+     * @throws {lowstorageError} If there's an error.
+     */
+    createStorage(): Promise<boolean>;
+    /**
      * List all collections.
      * @returns {Promise<string[]>} An array of collection names.
      * @throws {S3OperationError} If there's an error during S3 operation.

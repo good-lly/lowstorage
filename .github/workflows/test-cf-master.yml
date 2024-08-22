@@ -1,0 +1,36 @@
+name: Test Cloudflare Dev
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create env-cf file
+        run: |
+          touch .env
+          echo ENDPOINT=${{ secrets.ENDPOINT }} >> .env
+          echo REGION=${{ secrets.REGION }} >> .env
+          echo ACCESS_KEY_ID=${{ secrets.ACCESS_KEY_ID }} >> .env
+          echo SECRET_ACCESS_KEY=${{ secrets.SECRET_ACCESS_KEY }} >> .env
+          echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> .env
+
+      - name: Run e2e tests
+        run: npm run test:cf

@@ -1,3 +1,4 @@
 node_modules
 .wrangler
 .env
+test_ops/data

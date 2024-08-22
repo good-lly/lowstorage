@@ -1,0 +1,11 @@
+{
+	"displayName": "lowstorage tests on minio S3",
+	"testTimeout": 30000,
+	"silent": false,
+	"verbose": true,
+	"testEnvironment": "node",
+	"setupFilesAfterEnv": ["<rootDir>/test_ops/setup.js"],
+	"globalSetup": "./test_ops/setup.js",
+	"globalTeardown": "./test_ops/teardown.js",
+	"testMatch": ["<rootDir>/src/*.test.js"]
+}

@@ -122,6 +122,45 @@ class lowstorage {
 	};
 
 	/**
+	 * Check if a bucket exists.
+	 * @returns {Promise<boolean>} True if the bucket exists, false otherwise.
+	 * @throws {lowstorageError} If there's an error.
+	 */
+	async checkIfStorageExists(): Promise<boolean> {
+		try {
+			const exists = await this._s3.bucketExists();
+			return !!exists;
+		} catch (error: any) {
+			if (error.message.includes('Not Found')) {
+				return false;
+			}
+			throw new lowstorageError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
+		}
+	}
+
+	/**
+	 * Create a new storage bucket if it doesn't exist.
+	 * @returns {Promise<boolean>} A Promise that resolves to true if the bucket was created or already exists, false otherwise.
+	 * @throws {lowstorageError} If there's an error.
+	 */
+	async createStorage(): Promise<boolean> {
+		try {
+			const exists = await this.checkIfStorageExists();
+			if (!exists) {
+				const createdBucket = await this._s3.createBucket();
+				return createdBucket;
+			}
+			return exists;
+			throw new lowstorageError(`${MODULE_NAME}: Bucket already exists`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
+		} catch (error: any) {
+			if (error instanceof lowstorageError) {
+				throw error;
+			}
+			throw new lowstorageError(`${MODULE_NAME}: ${error.message}`, lowstorage_ERROR_CODES.S3_OPERATION_ERROR);
+		}
+	}
+
+	/**
 	 * List all collections.
 	 * @returns {Promise<string[]>} An array of collection names.
 	 * @throws {S3OperationError} If there's an error during S3 operation.

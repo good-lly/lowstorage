@@ -1,28 +1,15 @@
 import { env } from 'node:process';
 import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../build/lowstorage.min.js';
 
-const configCF = {
-	endpoint: env.CF_ENDPOINT,
-	region: env.CF_REGION,
-	accessKeyId: env.CF_ACCESS_KEY_ID,
-	secretAccessKey: env.CF_SECRET_ACCESS_KEY,
-	bucketName: env.CF_BUCKET_NAME,
+const config = {
+	endpoint: env.ENDPOINT || process.env.ENDPOINT || 'http://127.0.0.1:9000',
+	region: env.REGION || process.env.region || 'auto',
+	accessKeyId: env.ACCESS_KEY_ID || process.env.ACCESS_KEY_ID || 'minio_user',
+	secretAccessKey: env.SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY || 'minio_password',
+	bucketName: env.BUCKET_NAME || process.env.BUCKET_NAME || 'lowstorage-test',
 };
 
-console.log('🏃 Running tests...', configCF);
-
-const configMinio = {
-	endPoint: env.MINIO_ENDPOINT,
-	region: env.MINIO_REGION,
-	accessKey: env.MINIO_ACCESS_KEY,
-	secretKey: env.MINIO_SECRET_KEY,
-	bucketName: env.MINIO_BUCKET_NAME,
-};
-const usersToInsert = [
-	{ name: 'Alice', age: 30 },
-	{ name: 'Bob', age: 25 },
-	{ name: 'Charlie', age: 25 },
-];
+console.log('🏃 Running tests...', config);
 
 const userAvroSchema = {
 	type: 'record',
@@ -50,9 +37,16 @@ let lStorage;
 
 beforeAll(async () => {
 	console.time('lowstorage-test');
-	lStorage = new lowstorage(configCF);
+	lStorage = new lowstorage(config);
+	const exists = await lStorage.createStorage();
+	if (!exists) {
+		console.log('🚨 Failed to create storage, exiting...');
+		console.log(`Check if the bucket ${config.bucketName} exists and if your s3 credentials allow bucket creation. Or make it manually.`);
+		process.exit(1);
+	}
 	// clean up any existing collections
 	const listCollections = await lStorage.listCollections();
+	console.log('🧹 Cleaning up collections...', listCollections);
 	for (const col of listCollections) {
 		await lStorage.removeCollection(col);
 	}
@@ -427,7 +421,7 @@ test('Document | cachcing and race conditions', async () => {
 	if (exsists) {
 		await lStorage.removeCollection(colName);
 	}
-	const lStorage2 = new lowstorage(configCF);
+	const lStorage2 = new lowstorage(config);
 	const col2 = await lStorage2.collection(colName);
 
 	const col = await lStorage.collection(colName);

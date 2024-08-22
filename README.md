@@ -13,6 +13,8 @@
 [![GitHub issues](https://img.shields.io/github/issues/good-lly/lowstorage)](https://github.com/good-lly/lowstorage/issues/)
 <a href="https://github.com/good-lly/lowstorage/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions welcome" /></a>
 
+[![CodeQL](https://github.com/good-lly/lowstorage/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/good-lly/lowstorage/actions/workflows/github-code-scanning/codeql)
+
 [[github](https://github.com/good-lly/lowstorage)]
 [[npm](https://www.npmjs.com/package/lowstorage)]
 
@@ -60,6 +62,8 @@ R2 uses the S3 API to allow users and their applications to migrate with ease. W
   - [lowstorage class](#lowstorage)
 
     - [constructor(options: S3Options)](#constructor)
+    - [checkIfStorageExists(): Promise<boolean>](#checkifstorageexists)
+    - [createStorage(): Promise<boolean>](#createstorage)
     - [collection(colName: string, schema?: Object, autoCreate?: boolean)](#lowstorage-collection)
     - [listCollections(): Promise<string[]>](#listcollections)
     - [createCollection(colName: string, schema?: Object, data?: any[]): Promise<Collection>](#createcollection)
@@ -214,11 +218,11 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 
 ## API
 
-<a id="lowstorage"></a>
+<span id="lowstorage"></span>
 
 ### lowstorage class
 
-<a id="constructor"></a>
+<span id="constructor"></span>
 
 #### constructor(options: S3Options)
 
@@ -236,6 +240,24 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: A new lowstorage instance.
 - **Throws**: A lowstorageError if there's an error.
 
+<span id="checkifstorageexists"></span>
+
+#### checkIfStorageExists(): Promise\<boolean\>
+
+- **Behavior**: Checks if a storage bucket exists.
+- **Returns**: A Promise that resolves to a boolean indicating whether the storage bucket exists.
+- **Throws**: A lowstorageError if there's an error.
+
+<span id="createstorage"></span>
+
+#### createStorage(): Promise\<boolean\>
+
+- **Behavior**: Creates a new storage bucket if it doesn't exist.
+- **Returns**: A Promise that resolves to a boolean indicating whether the storage bucket was created or already exists.
+- **Throws**: A lowstorageError if there's an error.
+
+<span id="collection"></span>
+
 #### collection(colName: string, schema?: Object, autoCreate?: boolean)
 
 - **Behavior**: Creates or accesses a collection with the given name.
@@ -245,6 +267,8 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
   - `autoCreate?`: An optional boolean indicating whether to automatically create the collection if it doesn't exist. Default is `true`.
 - **Returns**: An instance of the Collection class corresponding to the specified collection name.
 - **Throws**: A lowstorageError if there's an error.
+
+<span id="listcollections"></span>
 
 #### listCollections(): Promise<string[]>
 
