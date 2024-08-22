@@ -17,7 +17,7 @@ jobs:
         run: docker --version && docker compose version
 
       - name: Start Docker image
-        run: docker compose -f ./tests/compose.yaml up -d && sleep 10
+        run: docker compose -f ./test_ops/compose.yaml up -d && sleep 10
 
       - uses: actions/setup-node@v4
         with:
