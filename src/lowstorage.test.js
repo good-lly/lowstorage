@@ -3,7 +3,7 @@ import { lowstorage, lowstorageError, lowstorage_ERROR_CODES } from '../build/lo
 
 const config = {
 	endpoint: env.ENDPOINT || process.env.ENDPOINT || 'http://127.0.0.1:9000',
-	region: env.REGION || process.env.region || 'auto',
+	region: env.REGION || process.env.REGION || 'auto',
 	accessKeyId: env.ACCESS_KEY_ID || process.env.ACCESS_KEY_ID || 'minio_user',
 	secretAccessKey: env.SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY || 'minio_password',
 	bucketName: env.BUCKET_NAME || process.env.BUCKET_NAME || 'lowstorage-test',
