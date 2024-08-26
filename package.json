@@ -32,7 +32,7 @@
 		"prettier:fix": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
 		"build": "tsc && esbuild --bundle --platform=node --target=node20 --format=esm ./src/lowstorage.js | node importify-esbuild-output.js | esbuild --bundle --minify --sourcemap --platform=node --target=node20 --format=esm --outfile=build/lowstorage.min.js",
 		"test:all": "npm run test:cf && npm run test:minio",
-		"test:cf": "node --env-file ./.env --experimental-vm-modules node_modules/jest/bin/jest.js --config=general.jest.config.json --detectOpenHandles",
+		"test:cf": "node --env-file ./.env --experimental-vm-modules node_modules/jest/bin/jest.js --config=general.jest.config.json --no-cache",
 		"test:minio": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=minio.jest.config.json --no-cache",
 		"clear": "rm -rf build && rm -rf lib"
 	},
