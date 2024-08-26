@@ -15,6 +15,13 @@
 
 [![CodeQL](https://github.com/good-lly/lowstorage/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/good-lly/lowstorage/actions/workflows/github-code-scanning/codeql)
 
+Dev:
+[![Test Cloudflare Dev](https://github.com/good-lly/lowstorage/actions/workflows/test-cf-dev.yml/badge.svg)](https://github.com/good-lly/lowstorage/actions/workflows/test-cf-dev.yml)
+[![Test Minio Dev](https://github.com/good-lly/lowstorage/actions/workflows/test-minio-dev.yml/badge.svg)](https://github.com/good-lly/lowstorage/actions/workflows/test-minio-dev.yml)
+
+Master: [![Test Cloudflare Master](https://github.com/good-lly/lowstorage/actions/workflows/test-cf-master.yml/badge.svg)](https://github.com/good-lly/lowstorage/actions/workflows/test-cf-master.yml)
+[![Test Minio Master](https://github.com/good-lly/lowstorage/actions/workflows/test-minio-master.yml/badge.svg)](https://github.com/good-lly/lowstorage/actions/workflows/test-minio-master.yml)
+
 [[github](https://github.com/good-lly/lowstorage)]
 [[npm](https://www.npmjs.com/package/lowstorage)]
 
@@ -52,10 +59,10 @@ R2 uses the S3 API to allow users and their applications to migrate with ease. W
 
 ## Table of Contents
 
-- [Features](##features)
-- [Cloudflare R2 vs. S3 API Compatibility](###cloudflare-r2-vs-s3-api-compatibility)
-- [Usage & Examples](###usage--examples)
-- [Installation](##installation)
+- [Features](#features)
+- [Cloudflare R2 vs. S3 API Compatibility](#cloudflare-r2-vs-s3-api-compatibility)
+- [Usage & Examples](#usage--examples)
+- [Installation](#installation)
 - [Setup & config](###setup--config)
 - [API](#api)
 
