@@ -61,8 +61,8 @@ declare class lowstorage {
      * @param {string} options.bucketName - S3 bucket name.
      * @param {string} [options.region='auto'] - S3 region.
      * @param {Object} [options.logger=null] - Logger object.
-     * @param {string} [options.dirPrefix=PROJECT_DIR_PREFIX] - Directory prefix for collections.
-     * @param {Number} [options.maxRequestSizeInBytes=CHUNG_5MB] - Chunk size for reading and writing data. AWS S3 has a minimum of 5MB per object.
+     * @param {string} [options.dirPrefix=DIR_PREFIX] - Directory prefix for collections.
+     * @param {Number} [options.maxRequestSizeInBytes=CHUNK_5MB] - Chunk size for reading and writing data. AWS S3 has a minimum of 5MB per object.
      * @returns {lowstorage} A new lowstorage instance.
      */
     private _schemas;
@@ -87,6 +87,7 @@ declare class lowstorage {
      * List all collections.
      * @returns {Promise<string[]>} An array of collection names.
      * @throws {S3OperationError} If there's an error during S3 operation.
+     * @throws {lowstorageError} If there's an error.
      */
     listCollections(): Promise<string[]>;
     /**
@@ -158,9 +159,9 @@ declare class Collection {
      * @param {string} colName - The name of the collection.
      * @param {Object} [schema] - The Avro schema for the collection.
      * @param {S3} s3 - The S3 instance.
-     * @param {string} [dirPrefix=PROJECT_DIR_PREFIX] - The directory prefix for the collection.
+     * @param {string} [dirPrefix=DIR_PREFIX] - The directory prefix for the collection.
      * @param {boolean} [safeWrite=false] - Whether to perform a safe write operation. It doublechecks the ETag of the object before writing. False = overwrites the object, True = only writes if the object has not been modified.
-     * @param {Number} [chunkSize=CHUNG_5MB] - The chunk size for reading and writing data. AWS S3 has a maximum of 5MB per object.
+     * @param {Number} [chunkSize=CHUNK_5MB] - The chunk size for reading and writing data. AWS S3 has a maximum of 5MB per object.
      * @returns {Collection} A new Collection instance.
      */
     private _colName;

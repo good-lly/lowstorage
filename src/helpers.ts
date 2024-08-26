@@ -27,7 +27,7 @@ const ensureIdFieldInSchema = (schema: Object): Object => {
 		size: 16,
 		logicalType: 'UUID',
 	};
-	if (typeof schema === 'undefined' || schema === null) {
+	if ((typeof schema === 'undefined' || schema === null) && (typeof schema !== 'object' || !Array.isArray(schema))) {
 		return schema;
 	}
 
