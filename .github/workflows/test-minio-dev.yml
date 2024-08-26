@@ -1,0 +1,33 @@
+name: Test Minio Dev
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Docker version
+        run: docker --version && docker compose version
+
+      - name: Start Docker image
+        run: docker compose -f ./test_ops/compose.yaml up -d && sleep 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run e2e tests
+        run: npm run test:minio

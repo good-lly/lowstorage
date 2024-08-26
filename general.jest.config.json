@@ -1,0 +1,9 @@
+{
+	"displayName": "lowstorage tests on general S3 (cloudflare)",
+	"verbose": true,
+	"collectCoverage": false,
+	"testMatch": ["**/src/*.test.js"],
+	"testEnvironment": "node",
+	"testTimeout": 70000,
+	"silent": false
+}

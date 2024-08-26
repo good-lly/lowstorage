@@ -2,13 +2,16 @@
 	"name": "lowstorage-examples",
 	"version": "0.0.1",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev --remote",
-		"start": "wrangler dev --remote"
+		"dev": "wrangler dev ",
+		"node-dev": "node --env-file=.env ./src/index.js",
+		"start": "wrangler dev"
 	},
 	"devDependencies": {
-		"wrangler": "^3.22.1"
+		"@hono/node-server": "^1.11.2",
+		"wrangler": "^3.57.2"
 	},
 	"dependencies": {
 		"hono": "^4.5.8",

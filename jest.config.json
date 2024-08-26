@@ -1,7 +1,0 @@
-{
-	"verbose": true,
-	"collectCoverage": false,
-	"testMatch": ["**/src/*.test.js"],
-	"collectCoverageFrom": ["src/lowstorage.js"],
-	"testEnvironment": "node"
-}
