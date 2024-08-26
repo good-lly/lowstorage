@@ -140,9 +140,9 @@ test('Collections | create via createCollection', async () => {
 	const removeCollection = await lStorage.removeCollection('userCol');
 	expect(removeCollection).toBe(true);
 
-	const listCollections2 = await lStorage.listCollections();
-	expect(listCollections2).not.toContain('userCol');
-	expect(listCollections2.length).toBe(0);
+	const listCollections22 = await lStorage.listCollections();
+	expect(listCollections22).not.toContain('userCol');
+	expect(listCollections22.length).toBe(0);
 });
 test('Collections | create via constructor', async () => {
 	const preListCheck = await lStorage.listCollections();
@@ -160,9 +160,9 @@ test('Collections | create via constructor', async () => {
 	const removeCollection = await lStorage.removeCollection('userCol');
 	expect(removeCollection).toBe(true);
 
-	const listCollections2 = await lStorage.listCollections();
-	expect(listCollections2).not.toContain('userCol');
-	expect(listCollections2.length).toBe(0);
+	const listCollections3 = await lStorage.listCollections();
+	expect(listCollections3).not.toContain('userCol');
+	expect(listCollections3.length).toBe(0);
 });
 test('Collections | error cases and error codes', async () => {
 	// Test create collection error
@@ -186,7 +186,6 @@ test('Collections | error cases and error codes', async () => {
 	await expect(tesCol2).toBeDefined();
 	await expect(tesCol2).toBeInstanceOf(Object);
 
-	const listCollections2 = await lStorage.listCollections();
 	const tesCol2Exists = await lStorage.collectionExists('testCol2');
 	expect(tesCol2Exists).toBe(true);
 
