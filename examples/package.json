@@ -14,7 +14,7 @@
 		"wrangler": "^3.57.2"
 	},
 	"dependencies": {
-		"hono": "^4.5.8",
+		"hono": "^4.6.5",
 		"lowstorage": "^0.0.1"
 	}
 }
