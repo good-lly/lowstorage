@@ -10,13 +10,9 @@ type S3Options = {
 };
 type CollectionProps = {
     colName: string;
-    schema: any;
     s3: S3;
     dirPrefix: string;
-    safeWrite: boolean;
     chunkSize: number;
-    avroParse: any;
-    avroType: any;
 };
 import { S3 } from 'ultralight-s3';
 import { lowstorage_ERROR_CODES, lowstorageError } from 'errors';
@@ -65,10 +61,8 @@ declare class lowstorage {
      * @param {Number} [options.maxRequestSizeInBytes=CHUNK_5MB] - Chunk size for reading and writing data. AWS S3 has a minimum of 5MB per object.
      * @returns {lowstorage} A new lowstorage instance.
      */
-    private _schemas;
     private _s3;
     private _dirPrefix;
-    private _avroParse;
     constructor(options: S3Options);
     _checkArgs: (args: S3Options) => void;
     /**
@@ -100,12 +94,11 @@ declare class lowstorage {
     /**
      * Create a new collection.
      * @param {string} colName - The name of the collection.
-     * @param {Object} [schema] - The schema for the collection.
      * @param {Array} [data=[]] - The initial data for the collection.
      * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
      * @throws {lowstorageError} If there's an error.
      */
-    createCollection(colName?: string, schema?: Object, data?: any[]): Promise<Collection>;
+    createCollection(colName?: string, data?: any[]): Promise<Collection>;
     /**
      * Remove a collection.
      * @param {string} colName - The name of the collection.
@@ -116,12 +109,11 @@ declare class lowstorage {
     /**
      * Get or create a collection.
      * @param {string} colName - The name of the collection.
-     * @param {Object} [schema] - The schema for the collection.
      * @param {boolean} [autoCreate=true] - Whether to automatically create the collection if it doesn't exist.
      * @returns {Promise<Collection>} A Promise that resolves to a Collection object.
      * @throws {lowstorageError} If there's an error.
      */
-    collection(colName?: string, schema?: object, autoCreate?: boolean): Promise<Collection>;
+    collection(colName?: string, autoCreate?: boolean): Promise<Collection>;
     /**
      * Get the S3 instance associated with the lowstorage instance.
      * @returns {S3} The S3 instance. Use this to perform S3 operations. Check for ultralight-s3 for more details.
@@ -157,7 +149,6 @@ declare class Collection {
     /**
      * Create a new Collection instance.
      * @param {string} colName - The name of the collection.
-     * @param {Object} [schema] - The Avro schema for the collection.
      * @param {S3} s3 - The S3 instance.
      * @param {string} [dirPrefix=DIR_PREFIX] - The directory prefix for the collection.
      * @param {boolean} [safeWrite=false] - Whether to perform a safe write operation. It doublechecks the ETag of the object before writing. False = overwrites the object, True = only writes if the object has not been modified.
@@ -165,38 +156,27 @@ declare class Collection {
      * @returns {Collection} A new Collection instance.
      */
     private _colName;
-    private _schema;
     private _s3;
     private _dirPrefix;
-    private _safeWrite;
     private _chunkSize;
-    private _avroParse;
     private _lastETag;
     private _dataCache;
-    private _avroType;
     private _key;
-    constructor(colName: string | undefined, schema: any, s3: S3, dirPrefix?: string, safeWrite?: boolean, chunkSize?: number);
+    private _packr;
+    constructor(colName: string | undefined, s3: S3, dirPrefix?: string, chunkSize?: number);
     getProps: () => CollectionProps;
     setProps: (props: CollectionProps) => void;
-    setSafeWrite: (safeWrite: boolean) => void;
-    getSafeWrite: () => boolean;
-    getAvroSchema: () => Object;
-    setAvroSchema: (schema: Object) => void;
     getCollectionETag: () => string;
-    inferAvroSchema: (data: any[] | {
-        [s: string]: unknown;
-    } | ArrayLike<unknown>, type?: string) => Object;
-    forceLoadData(): Promise<boolean>;
+    _isSameFile(key: string): Promise<boolean>;
     _loadData(): Promise<any[]>;
     _saveData(data: Object[]): Promise<boolean>;
     /**
      * Insert a document into the collection.
      * @param {Object|Array} doc - The document to insert.
-     * @param {Object} [schema=undefined] - The schema for the document.
      * @returns {Promise<Array>} A Promise that resolves to the array of inserted document(s).
      * @throws {lowstorageError} If there's an error.
      */
-    insert(doc: Object | Array<Object>, schema?: Object): Promise<Object[]>;
+    insert(doc: Object | Array<Object>): Promise<Object[]>;
     /**
      * Find documents in the collection.
      * @param {Object} [query={}] - The query to filter documents.
@@ -220,7 +200,6 @@ declare class Collection {
      * @param {Object} [update={}] - The update operations to apply to the matching document.
      * @returns {Promise<number>} A Promise that resolves to number of documents updated.
      * @throws {lowstorageError} If the updateOne operation fails.
-     * @throws {SchemaValidationError} If the schema is not defined for the collection.
      * @throws {DocumentValidationError} If the updated document is invalid.
      * @throws {S3OperationError} If the S3 operation fails.
      */
@@ -233,7 +212,6 @@ declare class Collection {
      /**
      * Update a single document in the collection that matches the query.
      * @throws {lowstorageError} If the updateOne operation fails.
-     * @throws {SchemaValidationError} If the schema is not defined for the collection.
      * @throws {DocumentValidationError} If the updated document is invalid.
      * @throws {S3OperationError} If the S3 operation fails.
      */
@@ -260,6 +238,6 @@ declare class Collection {
      * @throws {lowstorageError} If the count operation fails.
      */
     count(query?: Object): Promise<number>;
-    renameCollection(newColName: string, newSchema?: Object): Promise<Collection>;
+    renameCollection(newColName: string): Promise<Collection>;
 }
 export { lowstorage, lowstorageError, lowstorage_ERROR_CODES };

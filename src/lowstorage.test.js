@@ -11,16 +11,6 @@ const config = {
 
 console.log('🏃 Running tests...', config);
 
-const userAvroSchema = {
-	type: 'record',
-	name: 'User',
-	fields: [
-		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
-		{ name: 'name', type: 'string' },
-		{ name: 'age', type: 'int' },
-	],
-};
-
 const testColSchema = {
 	type: 'record',
 	name: 'TestCol',
@@ -48,8 +38,17 @@ beforeAll(async () => {
 	const listCollections = await lStorage.listCollections();
 	console.log('🧹 Cleaning up collections...', listCollections);
 	for (const col of listCollections) {
-		await lStorage.removeCollection(col);
+		console.log('🧹 Removing collection: ', col);
+		try {
+			const resp = await lStorage.removeCollection(col);
+			console.log(`✅ Collection ${col} removed successfully.`, resp);
+		} catch (err) {
+			console.error(`❌ Failed to remove collection ${col}:`, err);
+		}
 	}
+	console.log('🧹 Collections cleaned up.');
+	const listCollections2 = await lStorage.listCollections();
+	console.log('🧹 List collections after cleanup:', listCollections2);
 });
 
 afterAll(async () => {
@@ -59,13 +58,14 @@ afterAll(async () => {
 // full test basic operations on collection
 test('Collections | basic CRUD operations', async () => {
 	console.time('Collections | basic CRUD operations');
+
 	// check if collections exist
 	const userColExists = await lStorage.collectionExists('userCol');
 	// expect to be bollean
 	expect(typeof userColExists).toBe('boolean');
 	if (userColExists) {
 		// try to create collection and get error
-		await expect(lStorage.createCollection('userCol', userAvroSchema)).rejects.toThrowError();
+		await expect(lStorage.createCollection('userCol')).rejects.toThrowError();
 		// remove collection
 		const removeCollection = await lStorage.removeCollection('userCol');
 		expect(removeCollection).toBe(true);
@@ -73,14 +73,14 @@ test('Collections | basic CRUD operations', async () => {
 		expect(doubleCheckIfExists).toBe(false);
 	}
 	// create collection now
-	const userCol = await lStorage.createCollection('userCol', userAvroSchema);
+	const userCol = await lStorage.createCollection('userCol');
 	expect(userCol).toBeDefined();
 	const userColExists3 = await lStorage.collectionExists('userCol');
 	expect(userColExists3).toBe(true);
 
 	const listCollections = await lStorage.listCollections();
 	expect(listCollections).toContain('userCol');
-	await expect(lStorage.createCollection('userCol', userAvroSchema)).rejects.toThrowError();
+	await expect(lStorage.createCollection('userCol')).rejects.toThrowError();
 
 	// check if collections exist
 	const testColExists = await lStorage.collectionExists('testCol');
@@ -130,7 +130,7 @@ test('Collections | create via createCollection', async () => {
 	const preListCheck = await lStorage.listCollections();
 	expect(preListCheck.length).toBe(0);
 
-	const userCol = await lStorage.createCollection('userCol', userAvroSchema);
+	const userCol = await lStorage.createCollection('userCol');
 	expect(userCol).toBeDefined();
 
 	const userColExists3 = await lStorage.collectionExists('userCol');
@@ -148,12 +148,13 @@ test('Collections | create via createCollection', async () => {
 	expect(listCollections22.length).toBe(0);
 	console.timeEnd('Collections | create via createCollection');
 });
+
 test('Collections | create via constructor', async () => {
 	console.time('Collections | create via constructor');
 	const preListCheck = await lStorage.listCollections();
 	expect(preListCheck.length).toBe(0);
 
-	const userCol = await lStorage.collection('userCol', userAvroSchema);
+	const userCol = await lStorage.collection('userCol');
 	expect(userCol).toBeDefined();
 
 	const userColExists = await lStorage.collectionExists('userCol');
@@ -243,16 +244,8 @@ test('Collections | error cases and error codes', async () => {
 	// await expect(lStorage.updateCollectionSchema('testCol', testColSchema)).rejects.toThrow(lowstorageError);
 	// await expect(lStorage.updateCollectionSchema('testCol', testColSchema)).rejects.toThrow(lowstorage_ERROR_CODES.COLLECTION_NOT_FOUND);
 
-	// Test schema validation error
-	const invalidSchema = { type: 'invalid' };
-	await expect(lStorage.createCollection('invalidSchemaCol', invalidSchema)).rejects.toThrow(
-		lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR,
-	);
 	const listCollections3 = await lStorage.listCollections();
 	expect(listCollections3).not.toContain('invalidSchemaCol');
-
-	// Test document validation error
-	await expect(tesCol2.insert({ invalidField: 'value' })).rejects.toThrow(lowstorage_ERROR_CODES.DOCUMENT_VALIDATION_ERROR);
 
 	// Test insert error
 	await expect(tesCol2.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
@@ -307,13 +300,12 @@ test('Document | CRUD operations', async () => {
 	expect(etag).toBeDefined();
 	expect(etag).not.toBe('');
 
-	// Test insert with schema
-	const insertDataWithSchema = await col.insert({ name: 'Carlos', age: 25 }, userAvroSchema);
-	expect(insertDataWithSchema).toBeDefined();
-	expect(insertDataWithSchema).toHaveLength(1);
-	expect(insertDataWithSchema[0]).toHaveProperty('_id');
-	expect(insertDataWithSchema[0]).toHaveProperty('name', 'Carlos');
-	expect(insertDataWithSchema[0]).toHaveProperty('age', 25);
+	const insertData2 = await col.insert({ name: 'Carlos', age: 26 });
+	expect(insertData2).toBeDefined();
+	expect(insertData2).toHaveLength(1);
+	expect(insertData2[0]).toHaveProperty('_id');
+	expect(insertData2[0]).toHaveProperty('name', 'Carlos');
+	expect(insertData2[0]).toHaveProperty('age', 26);
 
 	// Test get collection etag
 	const etag2 = col.getCollectionETag();
@@ -322,12 +314,12 @@ test('Document | CRUD operations', async () => {
 	expect(etag2).not.toBe(etag);
 
 	// Test by find
-	const findDataWithSchema = await col.find({ name: 'Carlos' });
-	expect(findDataWithSchema).toBeDefined();
-	expect(findDataWithSchema).toHaveLength(2);
-	expect(findDataWithSchema[0]).toHaveProperty('_id');
-	expect(findDataWithSchema[0]).toHaveProperty('name', 'Carlos');
-	expect(findDataWithSchema[0]).toHaveProperty('age', 25);
+	const findData2 = await col.find({ name: 'Carlos' });
+	expect(findData2).toBeDefined();
+	expect(findData2).toHaveLength(2);
+	expect(findData2[0]).toHaveProperty('_id');
+	expect(findData2[0]).toHaveProperty('name', 'Carlos');
+	expect(findData2[0]).toHaveProperty('age', 25);
 
 	// test count
 	const count = await col.count({ name: 'Carlos' });
@@ -338,10 +330,6 @@ test('Document | CRUD operations', async () => {
 
 	const count3 = await col.count({ name: 'Carlos2' });
 	expect(count3).toBe(0);
-
-	// Test insert with invalid schema
-	const invalidSchema = { type: 'invalid' };
-	await expect(col.insert({ name: 'Carlos', age: 25 }, invalidSchema)).rejects.toThrow(lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
 
 	// Test insert with invalid data
 	await expect(col.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
@@ -360,37 +348,22 @@ test('Document | CRUD operations', async () => {
 	expect(insertDataArray[1]).toHaveProperty('name', 'Bob');
 	expect(insertDataArray[1]).toHaveProperty('age', 30);
 
-	// Test insert with array and schema
-	const insertDataArrayWithSchema = await col.insert(
-		[
-			{ name: 'Carlos', age: 25 },
-			{ name: 'Bob', age: 30 },
-		],
-		userAvroSchema,
-	);
+	const insertDataArray2 = await col.insert([
+		{ name: 'Carlos', age: 25 },
+		{ name: 'Bob', age: 30 },
+	]);
 
-	expect(insertDataArrayWithSchema).toBeDefined();
-	expect(insertDataArrayWithSchema).toHaveLength(2);
-	expect(insertDataArrayWithSchema[0]).toHaveProperty('_id');
-	expect(insertDataArrayWithSchema[0]).toHaveProperty('name', 'Carlos');
-	expect(insertDataArrayWithSchema[0]).toHaveProperty('age', 25);
-	expect(insertDataArrayWithSchema[1]).toHaveProperty('_id');
-	expect(insertDataArrayWithSchema[1]).toHaveProperty('name', 'Bob');
-	expect(insertDataArrayWithSchema[1]).toHaveProperty('age', 30);
+	expect(insertDataArray2).toBeDefined();
+	expect(insertDataArray2).toHaveLength(2);
+	expect(insertDataArray2[0]).toHaveProperty('_id');
+	expect(insertDataArray2[0]).toHaveProperty('name', 'Carlos');
+	expect(insertDataArray2[0]).toHaveProperty('age', 25);
+	expect(insertDataArray2[1]).toHaveProperty('_id');
+	expect(insertDataArray2[1]).toHaveProperty('name', 'Bob');
+	expect(insertDataArray2[1]).toHaveProperty('age', 30);
 
 	// Test insert with invalid array
 	await expect(col.insert(null)).rejects.toThrow(lowstorage_ERROR_CODES.INSERT_ERROR);
-
-	// Test insert with invalid array and schema
-	await expect(
-		col.insert(
-			[
-				{ name: 'Carlos', age: 25 },
-				{ name: 'Bob', age: 30 },
-			],
-			invalidSchema,
-		),
-	).rejects.toThrow(lowstorage_ERROR_CODES.SCHEMA_VALIDATION_ERROR);
 
 	// Test update
 	const updateData = await col.update({ name: 'Carlos' }, { name: 'Carlos2' });
@@ -452,7 +425,7 @@ test('Document | cachcing and race conditions', async () => {
 	const col2 = await lStorage2.collection(colName);
 
 	const col = await lStorage.collection(colName);
-	const insertData = await col.insert({ name: 'Carlos', age: 25 }, userAvroSchema);
+	const insertData = await col.insert({ name: 'Carlos', age: 25 });
 
 	expect(insertData).toBeDefined();
 	expect(insertData).toHaveLength(1);
@@ -461,15 +434,6 @@ test('Document | cachcing and race conditions', async () => {
 	expect(insertData[0]).toHaveProperty('age', 25);
 
 	const insertData2 = await col.insert({ name: 'Bob', age: 12 });
-
-	expect(col2.find({ name: 'Carlos' })).rejects.toThrow(lowstorage_ERROR_CODES.FIND_ERROR);
-
-	col2.setAvroSchema(userAvroSchema);
-	const schema2 = col2.getAvroSchema();
-	expect(schema2).toBeDefined();
-
-	const schema1 = col.getAvroSchema();
-	expect(schema1).toBeDefined();
 
 	const find1 = await col.find({ name: 'Carlos' });
 
@@ -514,13 +478,13 @@ test('Document | cachcing and race conditions', async () => {
 	expect(checkBob[0]).toHaveProperty('age', 30);
 
 	// Test update with invalid schema
-	await expect(col.update({ name: 'Carlos2' }, { surname: 'CarlosesSurname' })).rejects.toThrow(lowstorage_ERROR_CODES.UPDATE_ERROR);
+	await col.update({ name: 'Carlos2' }, { surname: 'CarlosesSurname' });
 	const updateCheck = await col2.find({ name: 'Carlos2' });
 	expect(updateCheck).toBeDefined();
 	expect(updateCheck).toHaveLength(1);
 	expect(updateCheck[0]).toHaveProperty('_id');
 	expect(updateCheck[0]).toHaveProperty('name', 'Carlos2');
 	expect(updateCheck[0]).toHaveProperty('age', 25);
-	expect(updateCheck[0]).not.toHaveProperty('surname', 'CarlosesSurname');
+	expect(updateCheck[0]).toHaveProperty('surname', 'CarlosesSurname');
 	console.timeEnd('Document | cachcing and race conditions');
 });

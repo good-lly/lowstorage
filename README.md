@@ -1,9 +1,9 @@
 <h1>
-  lowstorage | for edges & S3-compatible storages
+  lowstorage | for server/less edges and S3-compatible storages
   <br>
 </h1>
 
-> <strong>💾 Simple, lightning fast, object pseudo-database for S3-compatible storages, strongly inspired by lowdb(https://github.com/typicode/lowdb/).</strong> <br> ![AWS S3](https://img.shields.io/badge/AWS%20S3-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white)
+> <strong>💾 Simple, lightning fast, "object database" for S3-compatible storages, strongly inspired by lowdb(https://github.com/typicode/lowdb/).</strong> <br> ![AWS S3](https://img.shields.io/badge/AWS%20S3-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-F38020?style=for-the-badge&logo=Cloudflare&logoColor=white)
 
 [![GitHub release](https://img.shields.io/github/release/good-lly/lowstorage.svg)](https://github.com/good-lly/lowstorage/releases)
 ![npm package version](https://img.shields.io/npm/v/lowstorage)
@@ -27,12 +27,12 @@ Master: [![Test Cloudflare Master](https://github.com/good-lly/lowstorage/action
 
 ## Features
 
-- **🚀 Lightweight** under ~129kb minified
-- **🔧 Minimalist** - only [t](https://github.com/sentienhq/ultralight-s3)w[o](https://github.com/mtth/avsc) (zero-dependency) dependencies wrapped in a single package
+- **🚀 Lightweight** under ~135kb minified
+- **🔧 Minimalist** - only [t](https://github.com/sentienhq/ultralight-s3)w[o](https://github.com/kriszyp/msgpackr) (zero-dependency) dependencies wrapped in a single package
 - **💾 Familiar API** - similar to object databases like MongoDB
 - **📦 BYOS3 / S3-compatibility** - "Bring-Your-Own-S3" like
   [Garage](https://garagehq.deuxfleurs.fr/), [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/), [Minio](https://github.com/minio/minio), [Ceph](https://ceph.io/), [DigitalOcean Spaces](https://www.digitalocean.com/products/spaces/), [Google Cloud Storage](https://cloud.google.com/storage/), etc.
-- **🔁 Schema validation & serialization** - [Avro schema](https://avro.apache.org/docs/1.11.1/specification/) support ([fast and compact](https://github.com/mtth/avsc/wiki/Benchmarks) serialization with much smaller encodings)
+- **🔁 Fast and small** - [Using msgpackr](https://github.com/kriszyp/msgpackr) support ([fast and compact](https://github.com/mtth/avsc/wiki/Benchmarks) with much smaller (15~50%) encodings than JSON)
 - **💻 Typed** - Written in TypeScript
 
 ## Sponsors
@@ -49,7 +49,7 @@ Master: [![Test Cloudflare Master](https://github.com/good-lly/lowstorage/action
 Since version 2.0.0, `lowstorage` has undergone significant changes:
 
 - **Support for S3 Storages / constructor changes**: The constructor now accepts any S3-compatible configuration instead of being tied to Cloudflare R2. Like AWS S3, Cloudflare R2, Minio, Ceph, DigitalOcean Spaces, Google Cloud Storage, etc. (see [S3-compatible storages](#s3-compatible-storages)) instead of using AWS-SDK it utilize S3 via the zero-dependency [`ultralight-s3`](https://github.com/good-lly/ultralight-s3) package.
-- **Avro Schemas**: The constructor now accepts Avro schemas for each collection. This allows more flexibility in defining schemas and validation. If no schema is provided, it will automatically infer the schema from the data. Check out [Avro schema](https://avro.apache.org/docs/current/spec.html) documentation for more details.
+- **Msgpackr encodings**: Data is now encoded using [msgpackr](https://github.com/kriszyp/msgpackr) instead of JSON or Avro schemas. This allows for much faster and smaller encodings (15~50% smaller than JSON)
 
 If you are migrating from version 1.x.x, please review the new constructor parameters and usage examples below.
 
@@ -57,64 +57,15 @@ If you are migrating from version 1.x.x, please review the new constructor param
 
 R2 uses the S3 API to allow users and their applications to migrate with ease. When comparing to AWS S3, Cloudflare has removed some API operations’ features and added others. The S3 API operations are listed below with their current implementation status. Feature implementation is currently in progress. Refer back to this page for updates. The API is available via the `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` endpoint. Find your account ID in the Cloudflare dashboard.
 
-## Table of Contents
+### Installation
 
-- [Features](#features)
-- [Cloudflare R2 vs. S3 API Compatibility](#cloudflare-r2-vs-s3-api-compatibility)
-- [Usage & Examples](#usage--examples)
-- [Installation](#installation)
-- [Setup & config](###setup--config)
-- [API](#api)
+```sh
+npm install lowstorage
 
-  - [lowstorage class](#lowstorage)
+yarn add lowstorage
 
-    - [constructor(options: S3Options)](#constructor)
-    - [checkIfStorageExists(): Promise<boolean>](#checkifstorageexists)
-    - [createStorage(): Promise<boolean>](#createstorage)
-    - [collection(colName: string, schema?: Object, autoCreate?: boolean)](#lowstorage-collection)
-    - [listCollections(): Promise<string[]>](#listcollections)
-    - [createCollection(colName: string, schema?: Object, data?: any[]): Promise<Collection>](#createcollection)
-    - [removeCollection(colName: string): Promise<boolean>](#removecollection)
-    - [collectionExists(colName: string): Promise<boolean>](#collectionexistsn)
-    - [s3(): S3](#s3-s3)
-
-  - [Collection class](#collection)
-
-    - [constructor(colName: string, schema: any, s3: S3, dirPrefix?: string, safeWrite?: boolean, chunkSize?: number)](#collection-constructor)
-    - [getProps(): CollectionProps](#getprops)
-    - [setProps(props: CollectionProps): void](#setpropsprops)
-    - [setSafeWrite(safeWrite: boolean): void](#setsafewrite)
-    - [getSafeWrite(): boolean](#getsafewrite)
-    - [getAvroSchema(): Object](#getavroschema)
-    - [setAvroSchema(schema: Object): void](#setavroschemaschema)
-    - [getCollectionETag(): string](#getcollectionetag)
-    - [inferAvroSchema(data: Object | Array\<Object\>): Object](#inferavroschem)
-    - [forceLoadData(): Promise\<boolean\>](#forceloaddata)
-    - [insert(doc: Object | Array\<Object\>, schema?: Object): Promise\<Object[]\>](#insert)
-    - [find(query: Object, options: Object): Promise\<Object[]\>](#find)
-    - [findOne(query: Object): Promise\<Object | null\>](#findone)
-    - [update(query: Object, update: Object, options: Object): Promise\<number\>](#update)
-    - [updateOne(query: Record<string, any>, update: Record<string, any>, options: Record<string, any>): Promise\<number\>](#updateone)
-    - [delete(query: Object): Promise\<number\>](#delete)
-    - [deleteAll(): Promise\<number\>](#deleteall)
-    - [count(query: Object): Promise\<number\>](#count)
-    - [renameCollection(newColName: string, newSchema?: Object): Promise\<Collection\>](#renamecollection)
-
-  - [Error classes](#error-classes)
-
-    - [lowstorageError](#lowstorageerror)
-    - [CollectionNotFoundError](#collectionnotfounderror)
-    - [SchemaValidationError](#schemavalidationerror)
-    - [DocumentValidationError](#documentvalidationerror)
-    - [S3OperationError](#s3operationerror)
-
-  - [Error codes](#error-codes)
-
-- [Important Notice](##important-notice)
-
-- [Contributing](##contributing)
-
-- [License](##license)
+pnpm add lowstorage
+```
 
 ### Usage & Examples
 
@@ -133,27 +84,13 @@ const storage = new lowstorage({
 	maxRequestSizeInBytes?: 50 * 1024 * 1024, // request size in bytes for S3 operations (default: 5MB)
 });
 
-// example user schema
-const userAvroSchema = {
-	type: 'record',
-	name: 'User',
-	fields: [
-		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
-		{ name: 'name', type: 'string' },
-		{ name: 'age', type: 'int' },
-		{ name: 'gender', type: 'string' },
-		{ name: 'posts', type: { type: 'array', items: 'string' } },
-	],
-};
+ // get collection (if dont exists, returns empty array [])
+const userCol = await storage.collection('users');
 
-// Create a collection
-const userCol = await storage.createCollection('users');
-// or
-const userCol = await storage.collection('users'); // get collection
-// or
-const userCol = await storage.collection('users', userAvroSchema); // get collection with specificschema
+// Or you can create a collection with data
+const newUserCol = await storage.createCollection('newUsers', yourUserData);
 
-// Add new user - Avro schema is inferred from the data (_id is optional and will be autogenerated)
+// Add new user
 const newUser = await userCol.insert({
 	name: 'Kevin',
 	age: 32,
@@ -192,18 +129,62 @@ const listCollections = await storage.listCollections();
 // Get S3 instance and perform S3 operations (get, put, delete, etc.) Read more about ultralight-s3 here: https://github.com/sentienhq/ultralight-s3
 const s3ops = await storage.s3();
 
-// check the API section for more details or /examples and /dev folder for more samples
+// check the API section for more details in /dev folder for more samples
 ```
 
-### Installation
+## Table of Contents
 
-```sh
-npm install lowstorage
+- [Features](#features)
+- [Cloudflare R2 vs. S3 API Compatibility](#cloudflare-r2-vs-s3-api-compatibility)
+- [Usage & Examples](#usage--examples)
+- [Installation](#installation)
+- [Setup & config](###setup--config)
+- [API](#api)
 
-yarn add lowstorage
+  - [lowstorage class](#lowstorage)
 
-pnpm add lowstorage
-```
+    - [constructor(options: S3Options)](#constructor)
+    - [checkIfStorageExists(): Promise<boolean>](#checkifstorageexists)
+    - [createStorage(): Promise<boolean>](#createstorage)
+    - [collection(colName: string, autoCreate?: boolean)](#lowstorage-collection)
+    - [listCollections(): Promise<string[]>](#listcollections)
+    - [createCollection(colName: string, data?: any[]): Promise<Collection>](#createcollection)
+    - [removeCollection(colName: string): Promise<boolean>](#removecollection)
+    - [collectionExists(colName: string): Promise<boolean>](#collectionexistsn)
+    - [s3(): S3](#s3-s3)
+
+  - [Collection class](#collection)
+
+    - [constructor(colName: string, s3: S3, dirPrefix?: string, safeWrite?: boolean, chunkSize?: number)](#collection-constructor)
+    - [getProps(): CollectionProps](#getprops)
+    - [setProps(props: CollectionProps): void](#setpropsprops)
+    - [setSafeWrite(safeWrite: boolean): void](#setsafewrite)
+    - [getSafeWrite(): boolean](#getsafewrite)
+    - [getCollectionETag(): string](#getcollectionetag)
+    - [insert(doc: Object | Array\<Object\>): Promise\<Object[]\>](#insert)
+    - [find(query: Object, options: Object): Promise\<Object[]\>](#find)
+    - [findOne(query: Object): Promise\<Object | null\>](#findone)
+    - [update(query: Object, update: Object, options: Object): Promise\<number\>](#update)
+    - [updateOne(query: Record<string, any>, update: Record<string, any>, options: Record<string, any>): Promise\<number\>](#updateone)
+    - [delete(query: Object): Promise\<number\>](#delete)
+    - [deleteAll(): Promise\<number\>](#deleteall)
+    - [count(query: Object): Promise\<number\>](#count)
+    - [renameCollection(newColName: string): Promise\<Collection\>](#renamecollection)
+
+  - [Error classes](#error-classes)
+
+    - [lowstorageError](#lowstorageerror)
+    - [CollectionNotFoundError](#collectionnotfounderror)
+    - [DocumentValidationError](#documentvalidationerror)
+    - [S3OperationError](#s3operationerror)
+
+  - [Error codes](#error-codes)
+
+- [Important Notice](##important-notice)
+
+- [Contributing](##contributing)
+
+- [License](##license)
 
 ### Setup & config
 
@@ -265,12 +246,11 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 
 <span id="collection"></span>
 
-#### collection(colName: string, schema?: Object, autoCreate?: boolean)
+#### collection(colName: string, autoCreate?: boolean)
 
 - **Behavior**: Creates or accesses a collection with the given name.
-- **Input**: A string representing the name of the collection and an optional schema object.
+- **Input**: A string representing the name of the collection.
   - `colName`: The name of the collection.
-  - `schema?`: An optional schema object for the collection.
   - `autoCreate?`: An optional boolean indicating whether to automatically create the collection if it doesn't exist. Default is `true`.
 - **Returns**: An instance of the Collection class corresponding to the specified collection name.
 - **Throws**: A lowstorageError if there's an error.
@@ -283,12 +263,11 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: A promise that resolves to an array of collection names.
 - **Throws**: A lowstorageError if there's an error.
 
-#### createCollection(colName: string, schema?: Object, data?: any[]): Promise\<Collection\>
+#### createCollection(colName: string,data?: any[]): Promise\<Collection\>
 
-- **Behavior**: Creates a new collection with the given name and schema.
-- **Input**: A string representing the name of the collection and an optional schema object.
+- **Behavior**: Creates a new collection with the given name.
+- **Input**: A string representing the name of the collection.
   - `colName`: The name of the collection.
-  - `schema?`: An optional schema object for the collection.
   - `data?`: An optional array of data to initialize the collection with - if not provided, an empty array will be used and empty file will be created.
 - **Returns**: A promise that resolves to a Collection object.
 - **Throws**: A lowstorageError if there's an error.
@@ -316,12 +295,11 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 
 ## Collection class
 
-#### constructor(colName: string, schema: any, s3: S3, dirPrefix?: string, safeWrite?: boolean, chunkSize?: number)
+#### constructor(colName: string, s3: S3, dirPrefix?: string, safeWrite?: boolean, chunkSize?: number)
 
 - **Behavior**: Creates a new Collection instance.
-- **Input**: A string representing the name of the collection, an Avro schema object, an S3 instance, an optional directory prefix, an optional boolean indicating whether to perform safe writes, and an optional chunk size.
+- **Input**: A string representing the name of the collection, an S3 instance, an optional directory prefix, an optional boolean indicating whether to perform safe writes, and an optional chunk size.
   - `colName`: The name of the collection.
-  - `schema`: The Avro schema for the collection.
   - `s3`: The S3 instance.
   - `dirPrefix?`: An optional directory prefix for the collection. Default is `lowstorage`.
   - `safeWrite?`: An optional boolean indicating whether to perform safe writes. Default is `false`. Safe writes doublechecks the ETag of the object before writing. False = overwrites the object, True = only writes if the object has not been modified. (One request extra for safe writes = slower)
@@ -335,9 +313,6 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: An object containing the following properties:
   - `colName`: The name of the collection.
   - `s3`: The S3 instance.
-  - `schema`: The Avro schema for the collection.
-  - `avroParse`: The Avro parse instance.
-  - `avroType`: The Avro type instance.
   - `dirPrefix`: The directory prefix for the collection.
   - `safeWrite`: A boolean indicating whether to perform safe writes.
   - `chunkSize`: The chunk size for reading and writing data.
@@ -350,9 +325,6 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
   - `props`: An object containing the following properties:
     - `colName`: The name of the collection.
     - `s3`: The S3 instance.
-    - `schema`: The Avro schema for the collection.
-    - `avroParse`: The Avro parse instance.
-    - `avroType`: The Avro type instance.
     - `dirPrefix`: The directory prefix for the collection.
     - `safeWrite`: A boolean indicating whether to perform safe writes.
     - `chunkSize`: The chunk size for reading and writing data.
@@ -373,46 +345,17 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: A boolean indicating whether to perform safe writes.
 - **Throws**: A lowstorageError if there's an error.
 
-#### getAvroSchema(): Object
-
-- **Behavior**: Returns the Avro schema of the collection.
-- **Returns**: An object representing the Avro schema.
-- **Throws**: A lowstorageError if there's an error.
-
-#### setAvroSchema(schema: Object): void
-
-- **Behavior**: Sets the Avro schema of the collection.
-- **Input**: An object representing the Avro schema.
-  - `schema`: An object representing the Avro schema.
-- **Returns**: A void.
-- **Throws**: A lowstorageError if there's an error.
-
 #### getCollectionETag(): string
 
 - **Behavior**: Returns the ETag of the collection.
 - **Returns**: A string representing the ETag of the collection.
 - **Throws**: A lowstorageError if there's an error.
 
-#### inferAvroSchema(data: Object | Array\<Object\>): Object
-
-- **Behavior**: Infers the Avro schema from the given data.
-- **Input**: An object or an array of objects representing the data to infer the schema from.
-  - `data`: An object or an array of objects representing the data to infer the schema from.
-- **Returns**: An object representing the inferred Avro schema.
-- **Throws**: A lowstorageError if there's an error.
-
-#### forceLoadData(): Promise\<boolean\>
-
-- **Behavior**: Forces the collection to load its data from S3.
-- **Returns**: A promise that resolves to a boolean indicating whether the data was loaded successfully.
-- **Throws**: A lowstorageError if there's an error.
-
-#### insert(doc: Object | Array\<Object\>, schema?: Object): Promise\<Object[]\>
+#### insert(doc: Object | Array\<Object\>): Promise\<Object[]\>
 
 - **Behavior**: Inserts the given document(s) into the collection.
 - **Input**: An object or an array of objects to insert into the collection.
   - `doc`: An object or an array of objects to insert into the collection.
-  - `schema?`: An optional schema object for the collection.
 - **Returns**: A promise that resolves to an array of inserted documents.
 - **Throws**: A lowstorageError if there's an error.
 
@@ -475,12 +418,11 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
 - **Returns**: A promise that resolves to the number of documents in the collection.
 - **Throws**: A lowstorageError if there's an error.
 
-#### renameCollection(newColName: string, newSchema?: Object): Promise\<Collection\>
+#### renameCollection(newColName: string): Promise\<Collection\>
 
-- **Behavior**: Renames the collection with the given name and schema.
-- **Input**: A string representing the new name of the collection and an optional new schema object.
+- **Behavior**: Renames the collection with the given name.
+- **Input**: A string representing the new name of the collection.
   - `newColName`: The new name of the collection.
-  - `newSchema?`: An optional new schema object for the collection.
 - **Returns**: A promise that resolves to a Collection object.
 - **Throws**: A lowstorageError if there's an error.
 
@@ -502,15 +444,6 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
   - `message?`: An optional string representing the error message.
   - `code?`: An optional error code.
 - **Returns**: A new CollectionNotFoundError instance.
-- **Throws**: A lowstorageError if there's an error.
-
-#### SchemaValidationError
-
-- **Behavior**: Represents a SchemaValidation error.
-- **Input**: An optional string representing the error message and an optional error code.
-  - `message?`: An optional string representing the error message.
-  - `code?`: An optional error code.
-- **Returns**: A new SchemaValidationError instance.
 - **Throws**: A lowstorageError if there's an error.
 
 #### DocumentValidationError
@@ -542,9 +475,7 @@ For Cloudflare R2, follow similar steps with your R2-specific endpoint and crede
   - `CREATE_COLLECTION_ERROR`: A string representing the create collection error code.
   - `RENAME_COLLECTION_ERROR`: A string representing the rename collection error code.
   - `REMOVE_COLLECTION_ERROR`: A string representing the remove collection error code.
-  - `UPDATE_COLLECTION_SCHEMA_ERROR`: A string representing the update collection schema error code.
   - `COLLECTION_NOT_FOUND`: A string representing the collection not found error code.
-  - `SCHEMA_VALIDATION_ERROR`: A string representing the schema validation error code.
   - `DOCUMENT_VALIDATION_ERROR`: A string representing the document validation error code.
   - `S3_OPERATION_ERROR`: A string representing the S3 operation error code.
   - `FIND_ERROR`: A string representing the find error code.

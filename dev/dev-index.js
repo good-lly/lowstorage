@@ -1,40 +1,32 @@
-import { lowstorage } from '../lib/lowstorage.js';
+'use strict';
 import { env } from 'node:process';
+import { lowstorage } from '../build/lowstorage.min.js';
 // import { MongoClient, ServerApiVersion } from 'mongodb';
 
 const configCF = {
-	endpoint: env.CF_ENDPOINT,
-	region: env.CF_REGION,
-	accessKeyId: env.CF_ACCESS_KEY_ID,
-	secretAccessKey: env.CF_SECRET_ACCESS_KEY,
-	bucketName: env.CF_BUCKET_NAME,
+	endpoint: process.env.ENDPOINT,
+	region: process.env.REGION,
+	accessKeyId: process.env.ACCESS_KEY_ID,
+	secretAccessKey: process.env.SECRET_ACCESS_KEY,
+	bucketName: process.env.BUCKET_NAME,
+	logger: console,
 };
 
-const configMinio = {
-	endPoint: env.MINIO_ENDPOINT,
-	port: env.MINIO_PORT,
-	region: env.MINIO_REGION,
-	useSSL: env.MINIO_USE_SSL,
-	accessKey: env.MINIO_ACCESS_KEY,
-	secretKey: env.MINIO_SECRET_KEY,
-	bucketName: env.MINIO_BUCKET_NAME,
-};
+// const configMinio = {
+// 	endPoint: env.MINIO_ENDPOINT,
+// 	port: env.MINIO_PORT,
+// 	region: env.MINIO_REGION,
+// 	useSSL: env.MINIO_USE_SSL,
+// 	accessKey: env.MINIO_ACCESS_KEY,
+// 	secretKey: env.MINIO_SECRET_KEY,
+// 	bucketName: env.MINIO_BUCKET_NAME,
+// };
 
 const usersToInsert = [
 	{ name: 'Alice', age: 30 },
 	{ name: 'Bob', age: 25 },
 	{ name: 'Charlie', age: 25 },
 ];
-
-const userAvroSchema = {
-	type: 'record',
-	name: 'User',
-	fields: [
-		{ name: '_id', type: 'string', size: 16, logicalType: 'UUID' },
-		{ name: 'name', type: 'string' },
-		{ name: 'age', type: 'int' },
-	],
-};
 
 // async function mongoRun() {
 // 	try {
@@ -136,11 +128,11 @@ async function lowstorageRun() {
 		console.time('lowstorage');
 		const ls_cf = new lowstorage(configCF);
 
-		const userCol = await ls_cf.collection('users', userAvroSchema);
+		const userCol = await ls_cf.collection('users');
 
 		// Add new users
 		const newUsers = await userCol.insert(usersToInsert);
-		//console.log('newUsers', newUsers);
+		console.log('newUsers', newUsers);
 
 		// list all collections
 		const listCollections = await ls_cf.listCollections();

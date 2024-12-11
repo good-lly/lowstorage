@@ -7,13 +7,10 @@ declare class lowstorageError extends Error {
 declare class CollectionNotFoundError extends lowstorageError {
     constructor(collectionName: any, code?: errorCode);
 }
-declare class SchemaValidationError extends lowstorageError {
-    constructor(message: string, code?: errorCode);
-}
 declare class DocumentValidationError extends lowstorageError {
     constructor(message: string, code?: errorCode);
 }
 declare class S3OperationError extends lowstorageError {
     constructor(message: string, operation: string);
 }
-export { lowstorage_ERROR_CODES, lowstorageError, CollectionNotFoundError, SchemaValidationError, DocumentValidationError, S3OperationError, };
+export { lowstorage_ERROR_CODES, lowstorageError, CollectionNotFoundError, DocumentValidationError, S3OperationError };

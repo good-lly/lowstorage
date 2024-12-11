@@ -2,3 +2,5 @@ node_modules
 .wrangler
 .env
 test_ops/data
+.dev.vars
+backup.wrangler.toml
