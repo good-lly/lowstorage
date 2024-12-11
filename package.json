@@ -1,6 +1,6 @@
 {
 	"name": "lowstorage",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"description": "Simple, micro-dependency, pseudo-database using Apache Avro serialization on S3-compatible storages, inspired by lowdb.",
 	"type": "module",
 	"main": "./build/lowstorage.min.js",
