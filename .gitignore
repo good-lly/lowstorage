@@ -4,3 +4,4 @@ node_modules
 test_ops/data
 .dev.vars
 wrangler.toml
+build
