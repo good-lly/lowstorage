@@ -9,7 +9,7 @@ const config = {
 	bucketName: env.BUCKET_NAME || process.env.BUCKET_NAME || 'lowstorage-test',
 };
 
-console.log('🏃 Running tests...', config);
+console.log('🏃 Running tests...', config.endpoint);
 
 const testColSchema = {
 	type: 'record',
@@ -22,7 +22,6 @@ const testColSchema = {
 };
 
 // let worker = null;
-let request;
 let lStorage;
 
 beforeAll(async () => {
